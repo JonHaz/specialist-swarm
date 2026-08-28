@@ -143,15 +143,20 @@ End-to-end, in order:
 
 ```bash
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY="sk-ant-..."
-python setup_environment.py
-python create_specialists.py
-python upload_skills.py
-python create_coordinator.py
-python stretch_critic_subagent.py   # optional, WS5
-python smoke_test.py                # must exit 0 before spending on a run
-python run_deal_desk.py
+export ANTHROPIC_API_KEY="sk-ant-..."   # or put it in a gitignored .env
+python3 setup_environment.py
+python3 create_specialists.py
+python3 create_coordinator.py           # before upload_skills, not after
+python3 upload_skills.py
+python3 stretch_critic_subagent.py      # optional, WS5
+python3 smoke_test.py                   # must exit 0 before spending on a run
+python3 run_deal_desk.py
 ```
+
+Two corrections to the order this section originally gave: `upload_skills.py` now
+runs **after** `create_coordinator.py`, because `firm-voice` attaches to the
+coordinator and the script needs `.coordinator_id`; and `python3` is what is on
+PATH on the machines this was built on.
 
 Acceptance checks, in priority order:
 
@@ -161,7 +166,7 @@ Acceptance checks, in priority order:
 4. The Technical Fit section is honest rather than claiming universal fit. Specifically it should surface the two checkable gaps: the RFP's 99.99% SLA demand against a 99.95% standard tier (99.99% is a paid add-on requiring multi-region active-active), and the 80k events/sec + real-time ask against ~250ms–1s streaming latency. Power BI is a *strength* here — a dedicated DirectQuery adapter — and the section should say so; the Microsoft-stack gap is the absent Power Apps connector.
 5. The Console URL printed at the end actually resolves to the session.
 6. Re-running `create_specialists.py` does not silently orphan the previous roster.
-7. `python download_deliverable.py` re-fetches the same artifacts from `.last_session_id`.
+7. `python3 download_deliverable.py` re-fetches the same artifacts from `.last_session_id`.
 
 Run once end-to-end against the unmodified upstream first, and keep that transcript. It is the before-shot for the demo, and it is the only way to prove the delivery gap was real rather than a misconfiguration on one machine.
 
@@ -184,6 +189,87 @@ WS2 is the one to staff first. Everything else improves a demo that WS2 makes po
 - **All work stays on the fork.** No upstream PR to `rosscrooke/specialist-swarm` is planned. Commit freely against `JonHaz/specialist-swarm` and keep the branch history readable for teammates rather than for upstream review.
 - **Workspace access is confirmed.** The API key in use has multi-agent research-preview access, so WS1 is not gated on an access request. Teammates using their own keys should confirm the same before starting.
 - **Cards B and C are out of scope.** They stay unimplemented. Both would need new `synthetic-data/` fixtures and a rewritten specialist roster; nothing in this plan should be shaped around them.
+
+---
+
+## Execution notes
+
+Added after the build, so the next reader gets what the plan could not know in
+advance. The seven workstreams landed as a stacked branch series, one PR each,
+plus two follow-ups found during execution.
+
+### Acceptance checks, as measured
+
+Run `sesn_019NyLvVjpWboXwsWN8FVNvj`, five agents, $10 cap, finished
+`end_turn` well inside it.
+
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Branded `.docx` in `outputs/` | **Pass.** 19 KB, valid OOXML with a `styles.xml` part, ~17k characters of body text across nine sections. |
+| 2 | Four specialist threads spawn together | **Pass, and stronger than the check asked.** All four `thread_created` + `delegate` events appear before the first reply arrives, so this is a genuine single-message fan-out rather than four fast sequential turns. |
+| 3 | The planted traps are flagged | **Pass, all six.** 35% floor refused at 28%; MFN refused with a fixed five-year unit rate; Net 90; uncapped breach liability; no-notice audits; and full IP assignment declined with a licence-back counter. |
+| 4 | Technical Fit is honest | **Pass on the SLA gap and Power BI; two named items did not surface, correctly.** See below. |
+| 5 | The Console URL resolves | Printed in the corrected shape and now sourced from the workspace ID. Not clicked as part of this pass. |
+| 6 | Re-running the create scripts | **Pass.** Both refuse and list what exists; `--archive-existing` and `--force` behave as documented. |
+| 7 | `download_deliverable.py` re-fetches | **Pass.** Re-pulled the same `.docx` from `.last_session_id`. |
+
+### Check 4 deserves its own note
+
+The 99.99% ask against our 99.95% standard tier surfaced exactly as intended:
+named in the executive summary, priced at $120,000/yr, and — the part that makes
+it credible — with a recommendation *not* to buy it. Power BI is correctly
+called a strength, with the dedicated DirectQuery adapter named.
+
+The two other items this section predicted did **not** appear, and should not
+have. The 250ms–1s streaming-latency weakness and the missing Power Apps
+connector are both in the `technical-fit` skill's weak-list, but the RFP asks
+for neither: it says "real-time ingest from ~40,000 IoT devices" and never
+mentions sub-second query latency or Power Apps. Grading against requirements
+the customer did not state would have invented gaps. What the specialist did
+instead is the right behaviour — it graded ingest "met in full" while stating
+plainly that the 250,000 events/second figure is a test-harness benchmark and
+not a production number at Acme's device profile, and proposed proving it on
+live telemetry *before* award.
+
+Worth keeping as a lesson for the skill: a weak-list earns its place by being
+available when relevant, not by being recited every time.
+
+### Deviations from this plan
+
+- **WS6 event loop.** The plan says to *continue* on `requires_action`. Nothing
+  in `run_deal_desk.py` answers a tool confirmation, so continuing would stream
+  forever. It reports the pause loudly and exits non-zero instead.
+- **WS4 idempotence.** The plan offered "idempotent, or at minimum refuse with a
+  `--force` flag". Refusal is what shipped, plus `--archive-existing`, because
+  agents have no delete — only a permanent archive — so a genuinely idempotent
+  create is not available.
+
+### Two defects the plan did not anticipate
+
+- **`upload_skills.py` was adopting other people's skills.** It resolved skills
+  by `display_name`, on the assumption that the Skills API enforces uniqueness.
+  It does not — two skills with the same display name both create successfully.
+  This workspace is shared with many forks of this repo, and four of our five
+  skills were resolving to bundles uploaded by strangers three months earlier.
+  Nothing errored and the output looked plausible. Identity is now the
+  `skill_id` recorded in `.skill_ids.json`, display names are namespaced for
+  Console readability only, and content is pushed with `skills.versions.create`.
+  If you are re-running this on a shared workspace, this is the change to read
+  first.
+- **Rebuilding the coordinator stranded the critic.** `create_coordinator.py
+  --archive-existing` yields a coordinator with no `# Critic` block while the
+  critic agent stays alive and recorded, and the critic script's guard then
+  refused to re-wire it. The guard was on the wrong half: creating the critic is
+  the expensive part, wiring it is cheap and already idempotent. It now reuses a
+  recorded critic and re-applies the wiring every run.
+
+### Still open
+
+- **Cards B and C** remain out of scope, as decided.
+- **The output path is still enforced by prompt text alone.** Nothing at the API
+  level stops the coordinator writing elsewhere; `report_deliverable()` catches
+  it after the fact rather than preventing it. That is the one place in this
+  build where a rule that should be code is still prose.
 
 ## Committing this plan
 

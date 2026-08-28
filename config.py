@@ -8,6 +8,7 @@ load_dotenv(), which runs at import so that every script sees .env.
 """
 
 import os
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from dotenv import load_dotenv
 
@@ -94,6 +95,45 @@ def model_config(role: str) -> dict | str:
     if effort is None:
         return model_id
     return {"id": model_id, "effort": effort}
+
+
+# Default spend cap for one Deal Desk session, in whole dollars. Five agents on
+# Opus/Sonnet fanning out over a long RFP is the demo teammates re-run
+# repeatedly, and an unbounded run is the one mistake that costs real money.
+# Override with DEAL_DESK_BUDGET_USD; set it to "none" to run uncapped.
+DEFAULT_BUDGET_USD = "10"
+
+
+def session_budget() -> dict | None:
+    """Return the `budget` argument for sessions.create, or None for uncapped.
+
+    The API wants minor units as an integer string -- "1000" is $10.00, and a
+    decimal form like "10.00" is rejected -- so this takes human dollars and
+    does the conversion. One cap is shared across every thread in the session.
+
+    The budget is create-only and its removal is one-way, so it is set here
+    deliberately rather than adjusted later.
+    """
+    raw = os.environ.get("DEAL_DESK_BUDGET_USD", DEFAULT_BUDGET_USD).strip()
+    if raw.lower() in {"", "none", "off", "0"}:
+        return None
+    try:
+        dollars = Decimal(raw)
+    except InvalidOperation:
+        raise SystemExit(
+            f"DEAL_DESK_BUDGET_USD={raw!r} is not a number. Use dollars "
+            '(e.g. "10" or "7.50"), or "none" to run uncapped.'
+        )
+    if dollars <= 0:
+        raise SystemExit(
+            f"DEAL_DESK_BUDGET_USD={raw!r} must be positive. Use \"none\" to "
+            "run uncapped."
+        )
+    cents = int(dollars.scaleb(2).to_integral_value(rounding=ROUND_HALF_UP))
+    return {
+        "type": "limit",
+        "max_list_cost": {"amount": str(cents), "currency": "USD"},
+    }
 
 
 # The Console workspace the API key belongs to. The session response does not

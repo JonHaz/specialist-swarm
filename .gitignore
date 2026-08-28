@@ -1,3 +1,7 @@
+# Secrets. NEVER commit this file — it holds ANTHROPIC_API_KEY.
+.env
+.env.*
+
 # Python bytecode. session_files.py is the first importable module in this
 # repo, so this is the first time __pycache__/ appears.
 __pycache__/

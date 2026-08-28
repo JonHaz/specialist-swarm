@@ -11,12 +11,11 @@ Usage:
     python run_deal_desk.py
 """
 
-import os
 from pathlib import Path
 
 from anthropic import Anthropic
 
-from config import console_session_url
+from config import console_session_url, require_api_key
 from session_files import (
     DELIVERABLE_PATH,
     download_session_files,
@@ -49,8 +48,7 @@ def load_inputs_as_context() -> str:
 
 
 def main() -> None:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    require_api_key()
 
     if not Path(".coordinator_id").exists() or not Path(".environment_id").exists():
         raise SystemExit(

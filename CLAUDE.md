@@ -24,24 +24,25 @@ The multi-agent API is in research preview; the workspace behind the key must be
 ## Run order (READ THIS — the README's order is incomplete)
 
 ```bash
-python setup_environment.py      # writes .environment_id   <- README omits this; run_deal_desk.py hard-fails without it
-python create_specialists.py     # writes .specialist_ids.json
-python upload_skills.py          # reads .specialist_ids.json, writes .skill_ids.json
-python create_coordinator.py     # reads .specialist_ids.json, writes .coordinator_id
-python run_deal_desk.py          # reads .coordinator_id + .environment_id
+python3 setup_environment.py     # writes .environment_id
+python3 create_specialists.py    # writes .specialist_ids.json
+python3 create_coordinator.py    # reads .specialist_ids.json, writes .coordinator_id
+python3 upload_skills.py         # reads BOTH ID files, writes .skill_ids.json
+python3 run_deal_desk.py         # reads .coordinator_id + .environment_id
 ```
 
-`upload_skills.py` and `create_coordinator.py` both depend only on `.specialist_ids.json` and are
-independent of each other, so their relative order does not matter. The README, the "Next:" prints at
-the end of each script, and `run_deal_desk.py`'s error message each suggest a *different* order —
-none of them mention `setup_environment.py`. The dependency chain above is the authoritative one.
+`upload_skills.py` must run **after** `create_coordinator.py`. It used to depend only on
+`.specialist_ids.json`, but `firm-voice` attaches to the coordinator, so it now needs
+`.coordinator_id` too and exits with the correct order if that file is missing.
+
+Only `python3` is on PATH on some machines; the scripts are invoked that way throughout.
 
 Other entry points:
 
 ```bash
-python download_deliverable.py                # re-pull files from .last_session_id
-python download_deliverable.py sesn_01ABC...  # pull files from any older session
-python stretch_critic_subagent.py             # stretch goal: adds a 5th agent + rewrites coordinator prompt
+python3 download_deliverable.py                # re-pull files from .last_session_id
+python3 download_deliverable.py sesn_01ABC...  # pull files from any older session
+python3 stretch_critic_subagent.py             # stretch goal: adds a 5th agent + rewrites coordinator prompt
 ```
 
 ## Architecture: scripts are coupled by dot-files, not imports
@@ -53,8 +54,8 @@ most important thing to understand before changing anything:
 | --- | --- | --- |
 | `.environment_id` | `setup_environment.py` | `run_deal_desk.py` |
 | `.specialist_ids.json` | `create_specialists.py` (also mutated by `stretch_critic_subagent.py`) | `upload_skills.py`, `create_coordinator.py`, `stretch_critic_subagent.py` |
-| `.skill_ids.json` | `upload_skills.py` | nothing (record only) |
-| `.coordinator_id` | `create_coordinator.py` | `run_deal_desk.py`, `stretch_critic_subagent.py` |
+| `.skill_ids.json` | `upload_skills.py` | `upload_skills.py` (its own skill-identity record) |
+| `.coordinator_id` | `create_coordinator.py` | `run_deal_desk.py`, `upload_skills.py`, `stretch_critic_subagent.py` |
 | `.last_session_id` | `run_deal_desk.py` | `download_deliverable.py` |
 
 The one exception to the no-imports rule is `session_files.py`, a shared helper imported by
@@ -75,13 +76,17 @@ documentation. `COORDINATOR_SYSTEM`'s roster prose is separate and must be kept 
 - **Safe to rerun:** `setup_environment.py` (short-circuits if `.environment_id` exists),
   `upload_skills.py` (reuses the skill IDs recorded in `.skill_ids.json`, pushes a new version only
   when the bundle's hash changed, and skips already-attached agents).
-- **NOT safe to rerun:** `create_specialists.py`, `create_coordinator.py`,
-  `stretch_critic_subagent.py`. Each unconditionally calls `agents.create` and overwrites the ID
-  file, orphaning the previous agents. Delete stale agents server-side rather than assuming a rerun
-  is free.
+- **Guarded:** `create_specialists.py` and `create_coordinator.py` refuse to run when their ID file
+  exists, because a second `agents.create` would orphan the first set — and agents have no delete,
+  only a permanent `archive`. `--archive-existing` archives then recreates; `--force` recreates and
+  names the orphans it left behind. The shared logic is `agent_state.py`.
+- **NOT guarded:** `stretch_critic_subagent.py` still appends a duplicate critic on every run.
 
 ## API conventions used here
 
+- **`config.require_api_key()` is the only place the key is read.** It calls `load_dotenv()` at
+  import, so a `.env` at the repo root works without an export, and it raises one consistent error.
+  Six copies of this check had drifted into three different messages.
 - **Never set the beta header by hand.** The SDK applies `managed-agents-2026-04-01` automatically
   to `client.beta.{agents,sessions,environments}.*`, so every script constructs a bare
   `Anthropic()`. The **one** place an explicit `betas=[...]` is required is the session-scoped

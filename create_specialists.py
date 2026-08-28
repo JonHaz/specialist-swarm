@@ -11,17 +11,21 @@ Saves the resulting agent IDs to .specialist_ids.json so create_coordinator.py
 can reference them.
 
 Usage:
-    export ANTHROPIC_API_KEY="sk-ant-..."
-    python create_specialists.py
+    python3 create_specialists.py                     # first build
+    python3 create_specialists.py --archive-existing  # replace the current roster
 """
 
+import argparse
 import json
-import os
 from pathlib import Path
 
 from anthropic import Anthropic
 
-from config import MODELS
+from agent_state import add_rebuild_flags, guard
+from config import MODELS, require_api_key
+
+
+SPECIALIST_IDS_PATH = Path(".specialist_ids.json")
 
 
 # The coordinator picks delegates by reading each roster entry's name and
@@ -126,13 +130,15 @@ SPECIALISTS = [
 
 
 def main() -> None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    parser = argparse.ArgumentParser(description="Create the four specialist sub-agents.")
+    args = add_rebuild_flags(parser).parse_args()
+    api_key = require_api_key()
 
     # No default_headers: the SDK sets the managed-agents beta automatically for
     # client.beta.{agents,sessions,environments}.*.
     client = Anthropic(api_key=api_key)
+
+    guard(SPECIALIST_IDS_PATH, args, client)
 
     specialist_ids: dict[str, str] = {}
     for spec in SPECIALISTS:
@@ -151,9 +157,9 @@ def main() -> None:
         specialist_ids[spec["key"]] = agent.id
         print(f"  Created {spec['name']:32s} -> {agent.id}")
 
-    Path(".specialist_ids.json").write_text(json.dumps(specialist_ids, indent=2))
-    print(f"\nSaved {len(specialist_ids)} specialist IDs to .specialist_ids.json")
-    print("Next: python upload_skills.py")
+    SPECIALIST_IDS_PATH.write_text(json.dumps(specialist_ids, indent=2))
+    print(f"\nSaved {len(specialist_ids)} specialist IDs to {SPECIALIST_IDS_PATH}")
+    print("Next: python3 create_coordinator.py")
 
 
 if __name__ == "__main__":

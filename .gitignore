@@ -1,0 +1,8 @@
+# Python bytecode. session_files.py is the first importable module in this
+# repo, so this is the first time __pycache__/ appears.
+__pycache__/
+*.pyc
+
+# NOTE: the pipeline's state dot-files (.environment_id, .specialist_ids.json,
+# .coordinator_id, .skill_ids.json, .last_session_id) and outputs/ are NOT yet
+# ignored — that is WS4 in docs/scenario-a-build-out.md. Do not commit them.

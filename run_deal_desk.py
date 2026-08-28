@@ -16,6 +16,12 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from session_files import (
+    DELIVERABLE_PATH,
+    download_session_files,
+    report_deliverable,
+)
+
 
 RFP_PATH = Path("synthetic-data/rfp-acme-corp.md")
 SUPPORTING_FILES = [
@@ -67,9 +73,9 @@ def main() -> None:
         "1. Read the RFP yourself.\n"
         "2. Delegate to all four specialists in parallel.\n"
         "3. Synthesise their replies.\n"
-        "4. Produce the final proposal response as a branded Word document "
-        "if you have access to a docx skill; otherwise output the response "
-        "as a structured markdown document.\n\n"
+        "4. Produce the final proposal response as a Word document and save "
+        f"it to {DELIVERABLE_PATH} — that exact path. Files written anywhere "
+        "else are discarded when the session ends.\n\n"
         "Specialists have their own skills attached for their respective "
         "domains. Move fast — the RFP deadline is real.\n\n"
         f"{context}"
@@ -107,6 +113,13 @@ def main() -> None:
                         print(block.text, end="", flush=True)
             elif t == "agent.tool_use":
                 print(f"\n  [tool: {getattr(event, 'name', '?')}]", flush=True)
+            elif t == "agent.tool_result":
+                # Only surface failures. Echoing every result would drown the
+                # thread fan-out, and the fan-out is what the demo is for.
+                # A failed write is otherwise invisible until outputs/ is empty.
+                if getattr(event, "is_error", False):
+                    name = getattr(event, "name", "?")
+                    print(f"\n  [tool FAILED: {name}]", flush=True)
             elif t == "session.status_idle":
                 print("\n\n[swarm finished]")
                 break
@@ -116,24 +129,14 @@ def main() -> None:
     transcript_path.write_text("".join(final_text_parts))
     print(f"\nCoordinator transcript saved to {transcript_path}")
 
-    # Pull every file the agents produced in the container
+    # Pull every file the agents produced. Output files take 1-3s to index
+    # after the session goes idle, so this retries rather than reporting an
+    # empty result for a run that actually succeeded.
     print("\nDownloading deliverables from the session container...")
-    files = client.beta.files.list(
-        scope_id=session.id,
-        betas=["managed-agents-2026-04-01"],
-    )
-    file_count = 0
-    for f in files.data:
-        out_path = OUTPUT_DIR / f.filename
-        print(f"  {f.filename}  ->  {out_path}")
-        content = client.beta.files.download(f.id)
-        content.write_to_file(str(out_path))
-        file_count += 1
-
-    if file_count == 0:
-        print("  (no files found — agents may have produced text-only output)")
-    else:
-        print(f"\nDownloaded {file_count} file(s) to {OUTPUT_DIR}/")
+    written = download_session_files(client, session.id, OUTPUT_DIR)
+    if written:
+        print(f"\nDownloaded {len(written)} file(s) to {OUTPUT_DIR}/")
+    report_deliverable(written)
 
     print(f"\nView the full session (including all sub-agent threads) at:")
     print(f"  https://platform.claude.com/sessions/{session.id}")

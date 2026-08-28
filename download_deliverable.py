@@ -15,6 +15,8 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from session_files import download_session_files, report_deliverable
+
 
 OUTPUT_DIR = Path("outputs")
 
@@ -35,28 +37,15 @@ def main() -> None:
     client = Anthropic()
 
     print(f"Listing files for session {session_id}...")
-    # `scope_id` filters to files associated with that session
-    files = client.beta.files.list(
-        scope_id=session_id,
-        betas=["managed-agents-2026-04-01"],
-    )
+    written = download_session_files(client, session_id, OUTPUT_DIR)
 
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    count = 0
-    for f in files.data:
-        out_path = OUTPUT_DIR / f.filename
-        print(f"  downloading {f.filename} ({f.id})")
-        content = client.beta.files.download(f.id)
-        content.write_to_file(str(out_path))
-        print(f"    -> {out_path}")
-        count += 1
-
-    if count == 0:
+    if written:
+        print(f"\nDownloaded {len(written)} file(s) to {OUTPUT_DIR}/")
+    else:
         print("\nNo files found on that session.")
         print("Check the session in the Console:")
         print(f"  https://platform.claude.com/sessions/{session_id}")
-    else:
-        print(f"\nDownloaded {count} file(s) to {OUTPUT_DIR}/")
+    report_deliverable(written)
 
 
 if __name__ == "__main__":

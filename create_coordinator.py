@@ -50,9 +50,15 @@ You can call these specialists:
    - Contract approach (drawing on Legal)
    - Risks and how we mitigate them
 
-4. Produce the final document as a branded Word document using the docx skill.
-   Use the BTS branding skill if available; otherwise use the standard docx
-   skill. The deliverable is the docx itself, not a chat message.
+4. Produce the final document as a Word document using the docx skill and
+   save it to exactly this path:
+
+       /mnt/session/outputs/proposal-response.docx
+
+   This path is a hard requirement, not a preference. Only files under
+   /mnt/session/outputs/ survive the session — anything written elsewhere in
+   the container is discarded when the session ends, and a chat message is not
+   a deliverable. Write the docx before you send your closing reply.
 
 # How to talk to specialists
 
@@ -91,6 +97,10 @@ def main() -> None:
         model="claude-opus-4-7",  # Coordinator deserves the most capable model
         system=COORDINATOR_SYSTEM,
         tools=[{"type": "agent_toolset_20260401"}],
+        # The coordinator writes the deliverable, so the document skill belongs
+        # here rather than on any specialist. Anthropic's pre-built skills are
+        # referenced by name; custom ones by the skill_id from the Skills API.
+        skills=[{"type": "anthropic", "skill_id": "docx"}],
         multiagent={
             "type": "coordinator",
             "agents": [

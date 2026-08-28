@@ -1,2 +1,11 @@
-anthropic>=0.40.0
+# Managed Agents needs a much newer SDK than the original >=0.40.0 floor
+# suggested. Session-scoped file listing — files.list(scope_id=...), which is
+# how the deliverable is retrieved — is only typed from 0.92.0 onward, and the
+# SDK has since gone 1.x with breaking changes. This code is written and
+# verified against 1.2.0, so the floor is the 1.x line rather than a range that
+# spans the break. The upper bound keeps the next major from landing silently
+# on a teammate who clones this months from now.
+anthropic>=1.0.0,<2
+
+# Not yet imported anywhere — see the README note on loading .env.
 python-dotenv>=1.0.0

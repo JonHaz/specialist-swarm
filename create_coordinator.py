@@ -17,6 +17,16 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from config import model_config
+
+
+COORDINATOR_DESCRIPTION = (
+    "Runs a full Deal Desk pass on an inbound RFP: reads the RFP, delegates to "
+    "the pricing, legal, technical-fit, and competitive specialists in "
+    "parallel, and synthesises their replies into a single branded proposal "
+    "response saved as a Word document."
+)
+
 
 COORDINATOR_SYSTEM = """\
 You are the Senior Partner running the Deal Desk. An inbound RFP has just
@@ -87,14 +97,14 @@ def main() -> None:
         raise SystemExit("Run create_specialists.py first.")
     specialist_ids = json.loads(specialist_ids_path.read_text())
 
-    client = Anthropic(
-        api_key=api_key,
-        default_headers={"anthropic-beta": "managed-agents-2026-04-01"},
-    )
+    # No default_headers: the SDK sets the managed-agents beta automatically for
+    # client.beta.{agents,sessions,environments}.*.
+    client = Anthropic(api_key=api_key)
 
     coordinator = client.beta.agents.create(
         name="Deal Desk Senior Partner",
-        model="claude-opus-4-7",  # Coordinator deserves the most capable model
+        description=COORDINATOR_DESCRIPTION,
+        model=model_config("coordinator"),
         system=COORDINATOR_SYSTEM,
         tools=[{"type": "agent_toolset_20260401"}],
         # The coordinator writes the deliverable, so the document skill belongs

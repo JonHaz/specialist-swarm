@@ -81,17 +81,21 @@ from that hand-written prompt text — the two must be kept in sync manually.
 
 ## API conventions used here
 
-- **Beta header is applied inconsistently.** `create_specialists.py`, `create_coordinator.py`, and
-  `stretch_critic_subagent.py` construct the client with
-  `default_headers={"anthropic-beta": "managed-agents-2026-04-01"}`. The others construct a bare
-  `Anthropic()` and pass `betas=["managed-agents-2026-04-01"]` per-call — but only on
-  `files.list`. When adding a call that needs the beta, follow whichever pattern the surrounding
-  file already uses.
+- **Never set the beta header by hand.** The SDK applies `managed-agents-2026-04-01` automatically
+  to `client.beta.{agents,sessions,environments}.*`, so every script constructs a bare
+  `Anthropic()`. The **one** place an explicit `betas=[...]` is required is the session-scoped
+  `files.list(scope_id=...)` in `session_files.py`: it is a Files endpoint taking a Managed Agents
+  parameter, so the SDK's automatic `files-api-2025-04-14` is not enough and the call needs both.
 - **`agents.update` requires optimistic concurrency:** retrieve the agent first and pass
   `version=current.version`. See `upload_skills.py` and `stretch_critic_subagent.py`.
-- **Model IDs are hardcoded per agent**, not centralised — Sonnet for the three deep specialists,
-  Haiku for the cheap Competitive analyst, Opus for the coordinator and critic. Changing models
-  means editing each script.
+- **Model IDs and reasoning effort live in `config.py`**, never inline. `MODELS` maps a role key to
+  a model ID and `model_config(role)` returns the `model=` argument for `agents.create` — a bare
+  string, or `{"id", "effort"}` when `EFFORT` pins one for that role. Add a new agent by adding its
+  role to `MODELS`, not by typing a model string into a script. Model IDs are used exactly as
+  published and are never date-suffixed.
+- **`effort` is agent configuration only.** Setting it inside a per-session `model` override is
+  silently ignored — the session runs at the agent's effort. It has to be right at `agents.create`
+  time. The coordinator is pinned to `xhigh`, which is the repo's single largest cost lever.
 - **Skills are uploaded from directories** via `files_from_dir()`; each `skills/<name>/SKILL.md`
   needs YAML frontmatter with `name` and `description`. The uploaded `display_name` is derived as
   `skill_name.replace("-", " ").title()`.
@@ -120,5 +124,7 @@ Diligence) and C (Hire-to-Onboard) require writing new `synthetic-data/` fixture
 
 ## Repo hygiene note
 
-There is no `.gitignore`. The state dot-files above and the generated `outputs/` directory are
-untracked but visible to git — avoid committing agent/session IDs and generated deliverables.
+`.gitignore` covers `.env`, all five state dot-files, and `outputs/`. Those state files hold
+server-side IDs personal to whoever ran the build chain: committing them collides across teammates
+and a stale one silently points a run at somebody else's agents. Regenerate them by re-running the
+chain rather than sharing them.

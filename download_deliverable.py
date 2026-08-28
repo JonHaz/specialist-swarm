@@ -15,6 +15,7 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from config import console_session_url
 from session_files import download_session_files, report_deliverable
 
 
@@ -44,7 +45,7 @@ def main() -> None:
     else:
         print("\nNo files found on that session.")
         print("Check the session in the Console:")
-        print(f"  https://platform.claude.com/sessions/{session_id}")
+        print(f"  {console_session_url(session_id)}")
     report_deliverable(written)
 
 

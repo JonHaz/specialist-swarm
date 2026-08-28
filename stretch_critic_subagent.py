@@ -52,10 +52,9 @@ def main() -> None:
     coordinator_id = Path(".coordinator_id").read_text().strip()
     specialist_ids = json.loads(Path(".specialist_ids.json").read_text())
 
-    client = Anthropic(
-        api_key=api_key,
-        default_headers={"anthropic-beta": "managed-agents-2026-04-01"},
-    )
+    # No default_headers: the SDK sets the managed-agents beta automatically for
+    # client.beta.{agents,sessions,environments}.*.
+    client = Anthropic(api_key=api_key)
 
     # Create the critic
     critic = client.beta.agents.create(

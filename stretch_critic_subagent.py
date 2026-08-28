@@ -17,8 +17,12 @@ A critic is a plain roster entry, so it inherits the roster's constraints: 1–2
 entries, and **one level of delegation only**. The critic cannot itself carry a
 `multiagent` roster; adding one fails validation.
 
+Safe to re-run: it reuses the critic recorded in `.specialist_ids.json` and
+re-applies the coordinator wiring, which is what you need after recreating the
+coordinator. `--archive-existing` replaces the critic itself.
+
 Usage:
-    python3 stretch_critic_subagent.py                     # first run
+    python3 stretch_critic_subagent.py                     # create, or re-wire
     python3 stretch_critic_subagent.py --archive-existing  # replace the critic
 """
 
@@ -112,9 +116,16 @@ def main() -> None:
     # client.beta.{agents,sessions,environments}.*.
     client = Anthropic(api_key=api_key)
 
-    # A critic already recorded means this script has run before. Appending a
-    # second one is never the intent, so make the choice explicit.
+    # Half of this script creates an agent; the other half wires that agent into
+    # the coordinator. Only the first half is expensive to repeat, and only the
+    # second half is what you need after recreating the coordinator -- which
+    # drops the critic's system-prompt block while leaving the critic agent
+    # alive and still recorded. Refusing the whole run over the recorded critic
+    # therefore left no supported way back to a wired coordinator: the only
+    # options were a duplicate critic or an archive of a perfectly good one.
+    # So: reuse by default, and re-apply the wiring every time.
     previous = specialist_ids.get("critic")
+    critic = None
     if previous:
         if args.archive_existing:
             client.beta.agents.archive(previous)
@@ -122,27 +133,27 @@ def main() -> None:
         elif args.force:
             print(f"--force: replacing critic {previous}. It is now orphaned.")
         else:
-            raise SystemExit(
-                f"A critic is already recorded: {previous}\n\n"
-                "Re-running would add a SECOND critic to the roster and append the\n"
-                "critic instructions to the coordinator's system prompt again.\n"
-                "  --archive-existing   archive that critic, then create a replacement\n"
-                "  --force              create a replacement and keep the old one"
-            )
+            try:
+                critic = client.beta.agents.retrieve(previous)
+            except Exception:
+                print(f"Recorded critic {previous} no longer exists — creating one.")
+            else:
+                print(f"Reusing the recorded critic: {critic.id}")
 
-    critic = client.beta.agents.create(
-        name="Deal Desk Critic",
-        description=CRITIC_DESCRIPTION,
-        model=model_config("critic"),
-        system=CRITIC_SYSTEM,
-        tools=[{"type": "agent_toolset_20260401"}],
-        metadata={
-            "hackathon": "partner-basecamp-2026",
-            "track": "specialist-swarm",
-            "role": "critic",
-        },
-    )
-    print(f"Critic created: {critic.id}")
+    if critic is None:
+        critic = client.beta.agents.create(
+            name="Deal Desk Critic",
+            description=CRITIC_DESCRIPTION,
+            model=model_config("critic"),
+            system=CRITIC_SYSTEM,
+            tools=[{"type": "agent_toolset_20260401"}],
+            metadata={
+                "hackathon": "partner-basecamp-2026",
+                "track": "specialist-swarm",
+                "role": "critic",
+            },
+        )
+        print(f"Critic created: {critic.id}")
 
     specialist_ids["critic"] = critic.id
     SPECIALIST_IDS_PATH.write_text(json.dumps(specialist_ids, indent=2))
@@ -158,11 +169,15 @@ def main() -> None:
     ]
     roster.append({"type": "agent", "id": critic.id})
 
+    # The sentinel is what makes re-running safe: without it, every run appended
+    # the block again and the coordinator read several copies of a rule about
+    # consulting one critic.
     if CRITIC_BLOCK_HEADING in coordinator.system:
         system = coordinator.system
         print("Coordinator prompt already carries the critic block — leaving it.")
     else:
         system = coordinator.system + CRITIC_BLOCK
+        print("Appended the critic block to the coordinator's system prompt.")
 
     client.beta.agents.update(
         coordinator_id,

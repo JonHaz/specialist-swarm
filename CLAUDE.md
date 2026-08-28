@@ -81,10 +81,15 @@ documentation. `COORDINATOR_SYSTEM`'s roster prose is separate and must be kept 
   exists, because a second `agents.create` would orphan the first set — and agents have no delete,
   only a permanent `archive`. `--archive-existing` archives then recreates; `--force` recreates and
   names the orphans it left behind. The shared logic is `agent_state.py`.
-- **Guarded differently:** `stretch_critic_subagent.py` keys on the `critic` entry inside
-  `.specialist_ids.json` rather than on a whole file, because that is where its state lives. It also
-  replaces rather than appends in two places that used to compound on every run: the coordinator's
-  roster, and the `# Critic` block in its system prompt.
+- **Safe to rerun, but for a different reason:** `stretch_critic_subagent.py` does two separable
+  things — it creates the critic agent, and it wires that agent into the coordinator. Only the
+  creation is expensive to repeat, and only the wiring is what you need after rebuilding the
+  coordinator, since `create_coordinator.py --archive-existing` produces a coordinator with no
+  `# Critic` block while the critic agent stays alive and recorded. So the script reuses a recorded,
+  still-resolvable critic and re-applies the wiring every run. Both wiring steps replace rather than
+  append: the roster drops any entry for the superseded critic before adding one, and the
+  `CRITIC_BLOCK_HEADING` sentinel keeps the prompt block from compounding. `--archive-existing`
+  replaces the critic agent; `--force` creates a second one and names the orphan.
 
 ## API conventions used here
 

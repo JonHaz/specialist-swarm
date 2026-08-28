@@ -79,7 +79,7 @@ def main() -> None:
     user_message = (
         "An RFP has just landed. Please run the standard Deal Desk process:\n"
         "1. Read the RFP yourself.\n"
-        "2. Delegate to all four specialists in parallel.\n"
+        "2. Delegate to all four specialists in one message, in parallel.\n"
         "3. Synthesise their replies.\n"
         "4. Produce the final proposal response as a Word document and save "
         f"it to {DELIVERABLE_PATH} — that exact path. Files written anywhere "
@@ -92,6 +92,7 @@ def main() -> None:
     # Stream the events — this is the demo. Watch for parallel thread spawns.
     print("\n=== EVENT STREAM (this is the demo) ===\n")
     final_text_parts: list[str] = []
+    stop_reason = "end_turn"
 
     with client.beta.sessions.events.stream(session.id) as stream:
         client.beta.sessions.events.send(
@@ -129,7 +130,22 @@ def main() -> None:
                     name = getattr(event, "name", "?")
                     print(f"\n  [tool FAILED: {name}]", flush=True)
             elif t == "session.status_idle":
-                print("\n\n[swarm finished]")
+                # `session.status_idle` does not mean "done". It also fires when
+                # a thread is blocked on a tool confirmation, and when the
+                # session pauses at its budget cap. Breaking blind on the bare
+                # event reported every one of those as a clean finish.
+                reason = getattr(event, "stop_reason", None)
+                stop_reason = getattr(reason, "type", None) or "end_turn"
+                if stop_reason == "requires_action":
+                    ids = getattr(reason, "event_ids", None) or []
+                    print(f"\n\n[PAUSED: a thread is awaiting input — {ids}]")
+                    print("  Nothing in this script answers tool confirmations, so the")
+                    print("  run stops here rather than streaming forever.")
+                elif stop_reason == "budget_reached":
+                    print("\n\n[PAUSED: session budget cap reached]")
+                    print("  Raise or remove the budget to let the session continue.")
+                else:
+                    print(f"\n\n[swarm finished — {stop_reason}]")
                 break
 
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -148,6 +164,12 @@ def main() -> None:
 
     print(f"\nView the full session (including all sub-agent threads) at:")
     print(f"  {console_session_url(session.id)}")
+
+    if stop_reason != "end_turn":
+        raise SystemExit(
+            f"\nRun did not complete: {stop_reason}. Anything the agents did write "
+            f"has been downloaded to {OUTPUT_DIR}/."
+        )
 
 
 if __name__ == "__main__":

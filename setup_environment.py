@@ -7,15 +7,15 @@ Usage:
     python setup_environment.py
 """
 
-import os
 from pathlib import Path
 
 from anthropic import Anthropic
 
+from config import require_api_key
+
 
 def main() -> None:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    require_api_key()
 
     env_path = Path(".environment_id")
     if env_path.exists():

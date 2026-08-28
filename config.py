@@ -3,10 +3,37 @@ Shared constants for the Deal Desk swarm.
 
 Model IDs, the managed-agents beta version, and the Console workspace live here
 so that changing a model is a one-line edit rather than a grep across six
-scripts. Nothing in this module performs I/O or touches the API.
+scripts. Nothing in this module touches the API; the one piece of I/O is
+load_dotenv(), which runs at import so that every script sees .env.
 """
 
 import os
+
+from dotenv import load_dotenv
+
+
+# Read .env into the environment before anything else looks at it. An already
+# exported ANTHROPIC_API_KEY wins -- load_dotenv does not override by default --
+# so this adds a convenience without taking away the export you already use.
+load_dotenv()
+
+
+def require_api_key() -> str:
+    """Return ANTHROPIC_API_KEY, or exit with instructions.
+
+    Every entry point needs this, and six near-identical copies of the check had
+    drifted into three different error messages. One copy, one message.
+    """
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        raise SystemExit(
+            "ANTHROPIC_API_KEY is not set.\n"
+            "Either export it:\n"
+            '    export ANTHROPIC_API_KEY="sk-ant-..."\n'
+            "or put it in a .env file at the repo root (gitignored):\n"
+            "    printf 'ANTHROPIC_API_KEY=sk-ant-...\\n' >> .env"
+        )
+    return key
 
 
 # The managed-agents research-preview beta. The SDK sets this automatically for

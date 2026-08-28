@@ -27,6 +27,8 @@ from pathlib import Path
 from anthropic import Anthropic
 from anthropic.lib import files_from_dir
 
+from config import require_api_key
+
 
 # Target key meaning "the coordinator", as opposed to a specialist key from
 # .specialist_ids.json.
@@ -142,8 +144,7 @@ def as_skill_dict(skill) -> dict:
 
 
 def main() -> None:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    require_api_key()
 
     agent_ids = resolve_agent_ids()
     previous = load_records()

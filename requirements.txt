@@ -7,5 +7,6 @@
 # on a teammate who clones this months from now.
 anthropic>=1.0.0,<2
 
-# Not yet imported anywhere — see the README note on loading .env.
+# Imported by config.py, which calls load_dotenv() at import so every entry
+# point picks up a .env at the repo root without an explicit export.
 python-dotenv>=1.0.0

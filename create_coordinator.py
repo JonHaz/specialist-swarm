@@ -8,16 +8,21 @@ synthesise their outputs into the final deliverable.
 Saves the coordinator's ID to .coordinator_id.
 
 Usage:
-    python create_coordinator.py
+    python3 create_coordinator.py                     # first build
+    python3 create_coordinator.py --archive-existing  # replace the coordinator
 """
 
+import argparse
 import json
-import os
 from pathlib import Path
 
 from anthropic import Anthropic
 
-from config import model_config
+from agent_state import add_rebuild_flags, guard
+from config import model_config, require_api_key
+
+
+COORDINATOR_ID_PATH = Path(".coordinator_id")
 
 
 COORDINATOR_DESCRIPTION = (
@@ -94,9 +99,9 @@ fast because the RFP deadline is real.
 
 
 def main() -> None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    parser = argparse.ArgumentParser(description="Create the Deal Desk coordinator agent.")
+    args = add_rebuild_flags(parser).parse_args()
+    api_key = require_api_key()
 
     specialist_ids_path = Path(".specialist_ids.json")
     if not specialist_ids_path.exists():
@@ -106,6 +111,8 @@ def main() -> None:
     # No default_headers: the SDK sets the managed-agents beta automatically for
     # client.beta.{agents,sessions,environments}.*.
     client = Anthropic(api_key=api_key)
+
+    guard(COORDINATOR_ID_PATH, args, client)
 
     coordinator = client.beta.agents.create(
         name="Deal Desk Senior Partner",
@@ -131,10 +138,10 @@ def main() -> None:
         },
     )
 
-    Path(".coordinator_id").write_text(coordinator.id)
+    COORDINATOR_ID_PATH.write_text(coordinator.id)
     print(f"Coordinator created: {coordinator.id}")
     print(f"Roster: {list(specialist_ids.keys())}")
-    print(f"\nNext: python upload_skills.py then python run_deal_desk.py")
+    print("\nNext: python3 upload_skills.py, then python3 run_deal_desk.py")
 
 
 if __name__ == "__main__":

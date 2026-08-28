@@ -14,7 +14,7 @@ Each team picks ONE scenario. Each is shaped like real services-firm work: a coo
 **Specialists:**
 1. **Pricing Specialist** (skill: pricing-playbook) — decides commercial terms based on RFP scope and past wins
 2. **Legal Reviewer** (skill: legal-checklist) — flags risky RFP requirements and recommends contract positions
-3. **Technical Fit** (skill: product-overview) — assesses whether our product covers the RFP's requirements
+3. **Technical Fit** (skill: technical-fit) — assesses whether our product covers the RFP's requirements
 4. **Competitive Intel** (skill: competitive-intel) — identifies which competitors are likely in this deal and how to position
 
 **The trigger:** `synthetic-data/rfp-acme-corp.md` (an RFP from Acme Corp for an enterprise data platform)

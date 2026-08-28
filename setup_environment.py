@@ -4,7 +4,7 @@ Create the cloud Environment that the Deal Desk session runs in.
 Safe to run multiple times — if `.environment_id` already exists, it's reused.
 
 Usage:
-    python setup_environment.py
+    python3 setup_environment.py
 """
 
 from pathlib import Path

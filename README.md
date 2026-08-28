@@ -102,7 +102,14 @@ See [`stretch-goals.md`](./stretch-goals.md). The big ones:
   placeholder; replace it with your own firm's voice and re-run
   `python3 upload_skills.py`. Nothing in the pipeline reads its contents, so it
   is a one-file change.
-- **Critic sub-agent** — add a fifth agent that reviews the coordinator's draft before it's finalised
+- **Critic sub-agent** — `python3 stretch_critic_subagent.py` adds a fifth agent
+  that reviews the coordinator's draft before it's finalised. Run it **after**
+  `create_coordinator.py`: it mutates that coordinator in place, adding the
+  critic to its roster and appending critic instructions to its system prompt.
+  It refuses to run twice — a second run would put two critics on the roster and
+  two copies of the instruction in the prompt. Use `--archive-existing` to
+  replace the critic. Note the roster allows 1–20 entries with **one level of
+  delegation only**: the critic cannot itself carry a `multiagent` roster.
 - **Memory across deals** — coordinator remembers past wins and re-uses the right ones
 - **Synthetic MCP for past wins** — wire up a fake CRM to the pricing specialist
 

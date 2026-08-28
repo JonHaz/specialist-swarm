@@ -15,7 +15,7 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
-from config import console_session_url, require_api_key
+from config import console_session_url, require_api_key, session_budget
 from session_files import (
     DELIVERABLE_PATH,
     download_session_files,
@@ -65,10 +65,22 @@ def main() -> None:
     context = load_inputs_as_context()
 
     print(f"\nStarting session against coordinator {coordinator_id}...")
+
+    # The cap is create-only: there is no raising it once the session exists,
+    # and removing it is one-way. Pass it or don't, at creation.
+    budget = session_budget()
+    create_kwargs = {"budget": budget} if budget else {}
+    if budget:
+        cents = int(budget["max_list_cost"]["amount"])
+        print(f"  spend cap: ${cents / 100:.2f} across all threads")
+    else:
+        print("  spend cap: none (DEAL_DESK_BUDGET_USD opted out)")
+
     session = client.beta.sessions.create(
         agent=coordinator_id,
         environment_id=environment_id,
         title="Deal Desk — Acme Corp RFP",
+        **create_kwargs,
     )
     Path(".last_session_id").write_text(session.id)
 

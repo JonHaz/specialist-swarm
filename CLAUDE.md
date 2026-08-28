@@ -28,6 +28,7 @@ python3 setup_environment.py     # writes .environment_id
 python3 create_specialists.py    # writes .specialist_ids.json
 python3 create_coordinator.py    # reads .specialist_ids.json, writes .coordinator_id
 python3 upload_skills.py         # reads BOTH ID files, writes .skill_ids.json
+python3 smoke_test.py            # reads every ID file; asserts the build, spends nothing
 python3 run_deal_desk.py         # reads .coordinator_id + .environment_id
 ```
 
@@ -124,6 +125,29 @@ documentation. `COORDINATOR_SYSTEM`'s roster prose is separate and must be kept 
   so continuing the loop would hang. Nothing in the repo sends settle events; note that a session
   parked at its budget accepts only `user.tool_confirmation` / `user.tool_result` /
   `user.custom_tool_result` / `user.interrupt`, and a plain `user.message` there is a 400.
+
+## The preflight is the regression suite
+
+There is no unit-test suite; `smoke_test.py` is the closest thing and it asserts
+against the live API rather than fixtures. Every check in it corresponds to a fault that
+previously cost a full fan-out to discover: an agent with an empty `description` that the
+coordinator therefore never delegated to, a coordinator missing `docx` that silently
+emitted markdown, a skill recorded in `.skill_ids.json` but never attached. When a new
+failure mode turns up in a run, the fix is a check here, not a warning in a docstring.
+
+Checks run in order and stop at the first failure, sharing one `state` dict so the agent
+retrieve happens once. Each failure message names the script that fixes it — that is the
+point of the file, so keep new messages actionable rather than descriptive.
+
+## Session budget
+
+`run_deal_desk.py` creates every session under a cap (`config.session_budget()`, default
+$10, `DEAL_DESK_BUDGET_USD` to override, `none` to opt out). The API wants **minor units
+as an integer string** — `"1000"` is $10.00 and `"10.00"` is rejected — so the helper
+takes human dollars and converts. The cap is create-only, shared across all threads, and
+its removal is one-way, which is why it is passed at `sessions.create` and never adjusted
+afterwards. A session that reaches it pauses with `stop_reason.type == "budget_reached"`;
+start a new session with a higher cap rather than trying to raise it.
 
 ## Skills vs. inlined context
 

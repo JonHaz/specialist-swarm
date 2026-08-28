@@ -72,8 +72,8 @@ from that hand-written prompt text — the two must be kept in sync manually.
 ## Rerunning: which scripts are idempotent
 
 - **Safe to rerun:** `setup_environment.py` (short-circuits if `.environment_id` exists),
-  `upload_skills.py` (reuses skills matched by `display_title`, skips already-attached ones — the
-  Skills API rejects duplicate titles, so this reuse is load-bearing).
+  `upload_skills.py` (reuses skills matched by `display_name`, skips already-attached ones — the
+  Skills API rejects duplicate names, so this reuse is load-bearing).
 - **NOT safe to rerun:** `create_specialists.py`, `create_coordinator.py`,
   `stretch_critic_subagent.py`. Each unconditionally calls `agents.create` and overwrites the ID
   file, orphaning the previous agents. Delete stale agents server-side rather than assuming a rerun
@@ -93,7 +93,7 @@ from that hand-written prompt text — the two must be kept in sync manually.
   Haiku for the cheap Competitive analyst, Opus for the coordinator and critic. Changing models
   means editing each script.
 - **Skills are uploaded from directories** via `files_from_dir()`; each `skills/<name>/SKILL.md`
-  needs YAML frontmatter with `name` and `description`. The uploaded display title is derived as
+  needs YAML frontmatter with `name` and `description`. The uploaded `display_name` is derived as
   `skill_name.replace("-", " ").title()`.
 
 ## Skills vs. inlined context

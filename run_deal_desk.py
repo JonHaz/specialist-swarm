@@ -16,6 +16,7 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from config import console_session_url
 from session_files import (
     DELIVERABLE_PATH,
     download_session_files,
@@ -67,6 +68,10 @@ def main() -> None:
         title="Deal Desk — Acme Corp RFP",
     )
     Path(".last_session_id").write_text(session.id)
+
+    # Print the trace view up front, not just at the end: if the run dies
+    # mid-stream this link is the only way back to what the threads were doing.
+    print(f"  watch it live: {console_session_url(session.id)}")
 
     user_message = (
         "An RFP has just landed. Please run the standard Deal Desk process:\n"
@@ -139,7 +144,7 @@ def main() -> None:
     report_deliverable(written)
 
     print(f"\nView the full session (including all sub-agent threads) at:")
-    print(f"  https://platform.claude.com/sessions/{session.id}")
+    print(f"  {console_session_url(session.id)}")
 
 
 if __name__ == "__main__":

@@ -2,11 +2,19 @@
 .env
 .env.*
 
-# Python bytecode. session_files.py is the first importable module in this
-# repo, so this is the first time __pycache__/ appears.
+# Python bytecode.
 __pycache__/
 *.pyc
 
-# NOTE: the pipeline's state dot-files (.environment_id, .specialist_ids.json,
-# .coordinator_id, .skill_ids.json, .last_session_id) and outputs/ are NOT yet
-# ignored — that is WS4 in docs/scenario-a-build-out.md. Do not commit them.
+# Pipeline state. Every one of these holds a server-side ID that is personal to
+# whoever ran the scripts. With several teammates working from one fork they
+# collide in every commit, and a stale ID silently points a run at somebody
+# else's agents. Regenerate them by re-running the build chain; never share them.
+.environment_id
+.specialist_ids.json
+.coordinator_id
+.skill_ids.json
+.last_session_id
+
+# Generated deliverables. Re-fetch with `python3 download_deliverable.py`.
+outputs/

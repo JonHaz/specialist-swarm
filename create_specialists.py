@@ -3,6 +3,7 @@ Create four specialist sub-agents for the Deal Desk swarm.
 
 Each specialist gets:
 - A narrow system prompt
+- A description, which is how the coordinator decides whom to delegate to
 - The agent toolset (file ops, web search, web fetch, bash)
 - A skill that matches its domain (uploaded separately by upload_skills.py)
 
@@ -20,12 +21,21 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from config import MODELS
 
+
+# The coordinator picks delegates by reading each roster entry's name and
+# description, so "description" is written for the coordinator, not for humans:
+# what this specialist is good at, and what to hand it.
 SPECIALISTS = [
     {
         "key": "pricing",
         "name": "Pricing Specialist",
-        "model": "claude-sonnet-4-6",
+        "description": (
+            "Commercial terms for inbound RFPs. Give it the RFP text and the "
+            "past-wins data; it returns a discount band, term and payment "
+            "structure, which concessions to accept or refuse, and margin risks."
+        ),
         "system": (
             "You are the Pricing Specialist in a Deal Desk. Your job is to "
             "recommend commercial terms for inbound RFPs.\n\n"
@@ -44,7 +54,12 @@ SPECIALISTS = [
     {
         "key": "legal",
         "name": "Legal Reviewer",
-        "model": "claude-sonnet-4-6",
+        "description": (
+            "Contract risk on inbound RFPs. Give it the RFP text; it returns "
+            "every clause that conflicts with our standard negotiation "
+            "positions, each with a recommended counter and a severity of "
+            "blocker, negotiable, or acceptable."
+        ),
         "system": (
             "You are the Legal Reviewer in a Deal Desk. Your job is to read "
             "an RFP and flag every clause that conflicts with our standard "
@@ -64,7 +79,12 @@ SPECIALISTS = [
     {
         "key": "technical_fit",
         "name": "Technical Fit Specialist",
-        "model": "claude-sonnet-4-6",
+        "description": (
+            "Product capability fit. Give it the RFP's technical requirements; "
+            "it returns which we meet fully, partially, or not at all, an "
+            "overall fit score, and the single biggest risk. It is briefed to "
+            "be honest about gaps rather than claim universal fit."
+        ),
         "system": (
             "You are the Technical Fit Specialist. You decide whether our "
             "product actually does what the RFP asks for.\n\n"
@@ -82,7 +102,13 @@ SPECIALISTS = [
     {
         "key": "competitive",
         "name": "Competitive Intel Analyst",
-        "model": "claude-haiku-4-5-20251001",  # Cheaper for a quick analyst lookup
+        "description": (
+            "Competitive positioning. Give it the RFP's scope and named "
+            "vendors; it returns the most likely competitors, their strengths "
+            "and weaknesses on this specific deal, our best positioning "
+            "angles, and one trap to avoid. Fast and cheap — a battlecard "
+            "lookup, not a deep analysis."
+        ),
         "system": (
             "You are the Competitive Intel Analyst. You identify who else "
             "is likely competing for this RFP and how we should position.\n\n"
@@ -104,16 +130,16 @@ def main() -> None:
     if not api_key:
         raise SystemExit("Set ANTHROPIC_API_KEY before running.")
 
-    client = Anthropic(
-        api_key=api_key,
-        default_headers={"anthropic-beta": "managed-agents-2026-04-01"},
-    )
+    # No default_headers: the SDK sets the managed-agents beta automatically for
+    # client.beta.{agents,sessions,environments}.*.
+    client = Anthropic(api_key=api_key)
 
     specialist_ids: dict[str, str] = {}
     for spec in SPECIALISTS:
         agent = client.beta.agents.create(
             name=spec["name"],
-            model=spec["model"],
+            description=spec["description"],
+            model=MODELS[spec["key"]],
             system=spec["system"],
             tools=[{"type": "agent_toolset_20260401"}],
             metadata={

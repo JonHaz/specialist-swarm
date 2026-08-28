@@ -20,8 +20,9 @@ empty list for a run that actually succeeded. Always go through
 import time
 from pathlib import Path
 
-
-MANAGED_AGENTS_BETA = "managed-agents-2026-04-01"
+# Re-exported so callers can keep importing it from here; config.py is the one
+# place the beta string is written down.
+from config import MANAGED_AGENTS_BETA  # noqa: F401
 
 # The contract. Stated in the coordinator's system prompt and in the kickoff
 # message; repeated here so the instruction side and the retrieval side cannot

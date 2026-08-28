@@ -54,7 +54,10 @@ rather than re-deriving them yourself:
 1. Read the RFP yourself first. Note the customer, scope, and any obvious
    curveballs.
 
-2. Delegate to ALL FOUR specialists in parallel. Each gets:
+2. Delegate to ALL FOUR specialists in a SINGLE message — four delegations in
+   one turn, not four turns. Do not send one and wait for its reply before
+   sending the next. None of the four depends on another's output, so serialising
+   them only makes the deal slower. Each gets:
    - The full RFP text
    - A clear, narrow brief stating what you need from them
    - A deadline ("answer in one message, ~300 words")

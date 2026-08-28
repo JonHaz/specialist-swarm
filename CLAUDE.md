@@ -117,6 +117,13 @@ documentation. `COORDINATOR_SYSTEM`'s roster prose is separate and must be kept 
 - **Skill content is pushed with `skills.versions.create(skill_id, files=...)`**, not by re-creating
   the skill. Agents attach with `{"type": "custom", "skill_id": ..., "version": "latest"}` so they
   pick the new version up without an agent update.
+- **`session.status_idle` does not mean "finished".** It carries a nested `stop_reason` whose `.type`
+  is `end_turn`, `requires_action` (a thread is waiting on a tool confirmation), or `budget_reached`.
+  Key on the **session-level** `stop_reason`, not a thread-level one. `run_deal_desk.py` prints the
+  reason and exits non-zero for the two non-terminal cases — it has no code to answer a confirmation,
+  so continuing the loop would hang. Nothing in the repo sends settle events; note that a session
+  parked at its budget accepts only `user.tool_confirmation` / `user.tool_result` /
+  `user.custom_tool_result` / `user.interrupt`, and a plain `user.message` there is a 400.
 
 ## Skills vs. inlined context
 

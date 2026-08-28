@@ -132,9 +132,11 @@ See [`stretch-goals.md`](./stretch-goals.md). The big ones:
   that reviews the coordinator's draft before it's finalised. Run it **after**
   `create_coordinator.py`: it mutates that coordinator in place, adding the
   critic to its roster and appending critic instructions to its system prompt.
-  It refuses to run twice — a second run would put two critics on the roster and
-  two copies of the instruction in the prompt. Use `--archive-existing` to
-  replace the critic. Note the roster allows 1–20 entries with **one level of
+  Safe to re-run: it reuses the critic already recorded in
+  `.specialist_ids.json` and re-applies the wiring, which is exactly what you
+  need after rebuilding the coordinator — recreating a coordinator drops the
+  critic block from its prompt while leaving the critic agent alive. Use
+  `--archive-existing` to replace the critic itself. Note the roster allows 1–20 entries with **one level of
   delegation only**: the critic cannot itself carry a `multiagent` roster.
 - **Memory across deals** — coordinator remembers past wins and re-uses the right ones
 - **Synthetic MCP for past wins** — wire up a fake CRM to the pricing specialist

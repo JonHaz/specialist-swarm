@@ -8,7 +8,7 @@ you can watch the parallel thread fan-out — this is the demo, narrate it live.
 Saves the final transcript to outputs/.
 
 Usage:
-    python run_deal_desk.py
+    python3 run_deal_desk.py
 """
 
 from pathlib import Path

@@ -6,8 +6,8 @@ run_deal_desk.py). You can also pass the session ID as a CLI argument
 to grab files from any older session.
 
 Usage:
-    python download_deliverable.py                       # last run
-    python download_deliverable.py sesn_01ABC...         # specific session
+    python3 download_deliverable.py                       # last run
+    python3 download_deliverable.py sesn_01ABC...         # specific session
 """
 
 import sys
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
-from config import console_session_url
+from config import console_session_url, require_api_key
 from session_files import download_session_files, report_deliverable
 
 
@@ -23,6 +23,8 @@ OUTPUT_DIR = Path("outputs")
 
 
 def main() -> None:
+    require_api_key()
+
     # Resolve session ID
     if len(sys.argv) > 1:
         session_id = sys.argv[1].strip()
@@ -31,7 +33,7 @@ def main() -> None:
         if not last.exists():
             raise SystemExit(
                 "No session ID provided and `.last_session_id` not found.\n"
-                "Usage: python download_deliverable.py <session_id>"
+                "Usage: python3 download_deliverable.py <session_id>"
             )
         session_id = last.read_text().strip()
 

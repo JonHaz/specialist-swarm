@@ -64,16 +64,17 @@ absorbs the 1-3s output indexing lag, and `report_deliverable()`, which fails lo
 expected `.docx` is absent. Change the output path there, not in the callers.
 
 Adding a specialist means touching three places: the `SPECIALISTS` list in `create_specialists.py`,
-the `SKILL_TO_SPECIALIST` map in `upload_skills.py` (if it needs a skill), and the coordinator's
+the `SKILL_TO_AGENT` map in `upload_skills.py` (if it needs a skill), and the coordinator's
 `COORDINATOR_SYSTEM` roster prose in `create_coordinator.py`. The roster the API sees is built from
-`.specialist_ids.json` automatically, but the coordinator only knows *what each specialist is for*
-from that hand-written prompt text — the two must be kept in sync manually.
+`.specialist_ids.json` automatically, and the coordinator picks delegates by reading each entry's
+`name` and `description` — so the `description` in `create_specialists.py` is functional, not
+documentation. `COORDINATOR_SYSTEM`'s roster prose is separate and must be kept in sync by hand.
 
 ## Rerunning: which scripts are idempotent
 
 - **Safe to rerun:** `setup_environment.py` (short-circuits if `.environment_id` exists),
-  `upload_skills.py` (reuses skills matched by `display_name`, skips already-attached ones — the
-  Skills API rejects duplicate names, so this reuse is load-bearing).
+  `upload_skills.py` (reuses the skill IDs recorded in `.skill_ids.json`, pushes a new version only
+  when the bundle's hash changed, and skips already-attached agents).
 - **NOT safe to rerun:** `create_specialists.py`, `create_coordinator.py`,
   `stretch_critic_subagent.py`. Each unconditionally calls `agents.create` and overwrites the ID
   file, orphaning the previous agents. Delete stale agents server-side rather than assuming a rerun
@@ -97,8 +98,17 @@ from that hand-written prompt text — the two must be kept in sync manually.
   silently ignored — the session runs at the agent's effort. It has to be right at `agents.create`
   time. The coordinator is pinned to `xhigh`, which is the repo's single largest cost lever.
 - **Skills are uploaded from directories** via `files_from_dir()`; each `skills/<name>/SKILL.md`
-  needs YAML frontmatter with `name` and `description`. The uploaded `display_name` is derived as
-  `skill_name.replace("-", " ").title()`.
+  needs YAML frontmatter with `name` and `description`.
+- **A skill's identity is its `skill_id`, never its `display_name`.** Display names are *not*
+  unique-enforced — creating two skills called "ZZ Probe" back to back both succeed. This workspace
+  is shared with many other forks of this repo, so `upload_skills.py` resolves each skill from the
+  ID in `.skill_ids.json` and appends `SKILL_NAMESPACE` (default: the OS username) to the display
+  name for Console readability only. Do not reintroduce lookup-by-name: the previous version did
+  that, and four of the five skills silently resolved to bundles uploaded by strangers three months
+  earlier. Everything ran and the output looked plausible.
+- **Skill content is pushed with `skills.versions.create(skill_id, files=...)`**, not by re-creating
+  the skill. Agents attach with `{"type": "custom", "skill_id": ..., "version": "latest"}` so they
+  pick the new version up without an agent update.
 
 ## Skills vs. inlined context
 
@@ -106,15 +116,18 @@ The coordinator carries Anthropic's pre-built `docx` skill (`skills=[{"type": "a
 "skill_id": "docx"}]` in `create_coordinator.py`) because it is the agent that writes the
 deliverable. Pre-built skills are referenced by name; custom ones by `skill_id` from the Skills API.
 
-Only three of the four specialists get an uploaded Skill (`pricing-playbook` → pricing,
-`legal-checklist` → legal, `competitive-intel` → competitive). The **Technical Fit specialist has no
-skill by design** — its knowledge base, `synthetic-data/product-overview.md`, is inlined into the
-user message instead. `scenario-cards.md` lists `product-overview` as if it were a skill; it is not.
+All four specialists carry an uploaded Skill (`pricing-playbook` → pricing, `legal-checklist` →
+legal, `competitive-intel` → competitive, `technical-fit` → technical_fit), and the coordinator
+additionally carries `firm-voice` because it is the agent that writes the customer-facing document.
+`skills/technical-fit/` is a promotion of `synthetic-data/product-overview.md` into a real skill,
+plus a fit-scoring rubric and a claim-discipline section; `product-overview.md` is kept as the
+source fixture but is **no longer inlined**, since the only agent that needs it now loads it as a
+skill.
 
-Relatedly, `run_deal_desk.py` **inlines** the RFP, `past-wins.json`, and `product-overview.md` as
-text blocks in the user message. The README's claim that it "uploads the synthetic RFP as a file" is
-stale — the Files API is only used on the way back out, to download deliverables the agents produced
-in the session container.
+`run_deal_desk.py` still **inlines** the RFP and `past-wins.json` as text blocks in the user message
+— the coordinator quotes precedent deals directly during synthesis. The README's claim that it
+"uploads the synthetic RFP as a file" is stale: the Files API is only used on the way back out, to
+download deliverables the agents produced in the session container.
 
 ## Scenario cards
 

@@ -25,9 +25,14 @@ from session_files import (
 
 
 RFP_PATH = Path("synthetic-data/rfp-acme-corp.md")
+
+# product-overview.md is deliberately NOT inlined. Its content is now the
+# `technical-fit` skill, carried by the Technical Fit Specialist, so inlining it
+# here would ship the whole capability map into every coordinator turn for an
+# agent that does not use it. past-wins.json stays inline because the
+# coordinator quotes precedent deals directly in the synthesis.
 SUPPORTING_FILES = [
     Path("synthetic-data/past-wins.json"),
-    Path("synthetic-data/product-overview.md"),
 ]
 OUTPUT_DIR = Path("outputs")
 

@@ -1,0 +1,1421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The specialist-swarm Deal Desk build, its one recorded run, and the provenance behind every number on the page.">
+<!--
+  Deal Desk Console - a static read-out of the specialist-swarm build and the
+  one recorded run of it (session sesn_019NyLvVjpWboXwsWN8FVNvj).
+
+  Self-contained: one file, no build step, no server. Open it in a browser.
+  Google Fonts is the only external request; it degrades to the declared
+  fallback stacks offline. Light and dark both come from prefers-color-scheme.
+
+  Every number on this page is measured rather than estimated. Timings are
+  differences between the `processed_at` fields on
+  `client.beta.sessions.events.list(session_id)`; cost is `usage.list_cost`
+  from `client.beta.sessions.retrieve(session_id)`; the diff figures are the
+  merged PRs. Where a denominator does not exist, the page says so instead of
+  quoting a rate.
+
+  This file is also published as a Claude artifact. The artifact host supplies
+  its own doctype/head/body, so republishing it means sending everything from
+  the <title> below to the end of the file - without this wrapper. The charset
+  meta sits ABOVE this comment on purpose: HTML5 only scans the first 1024
+  bytes for it, and this comment is longer than that.
+-->
+<title>Deal Desk Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+</head>
+<body>
+<style>
+/* ── tokens ───────────────────────────────────────────────── */
+:root{
+  --paper:#EBEEF5; --surface:#FFFFFF; --surface-2:#F5F7FB; --sunken:#E3E7F0;
+  --ink:#151822; --ink-2:#565E71; --ink-3:#7C8497;
+  --rule:#D5DAE7; --rule-soft:#E5E9F2;
+  --accent:#2D3B8E; --accent-2:#4A59B5; --accent-wash:#E7EAF7;
+  --pass:#2C7A4E; --pass-wash:#E2F0E8;
+  --note:#B45B14; --note-wash:#FAEBDE;
+  --open:#9E3232; --open-wash:#F7E4E4;
+  --lane-coord:#2D3B8E; --lane-pricing:#7E5C10; --lane-legal:#873E6D;
+  --lane-tech:#15667A; --lane-comp:#5A6A1B; --lane-critic:#575D71;
+  --shadow:0 1px 2px rgba(21,24,34,.05), 0 8px 24px -16px rgba(21,24,34,.28);
+  --sans:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display:"Bodoni Moda", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1118; --surface:#171A23; --surface-2:#1D212C; --sunken:#0A0C12;
+    --ink:#E4E8F1; --ink-2:#99A1B5; --ink-3:#767E92;
+    --rule:#2A2F3D; --rule-soft:#232734;
+    --accent:#93A2F7; --accent-2:#AFBAFA; --accent-wash:#1C2140;
+    --pass:#5FBF8B; --pass-wash:#14291F;
+    --note:#E0913F; --note-wash:#2C2015;
+    --open:#E07272; --open-wash:#2E1919;
+    --lane-coord:#93A2F7; --lane-pricing:#D0A445; --lane-legal:#D081B4;
+    --lane-tech:#54B4CC; --lane-comp:#A8BC55; --lane-critic:#9AA2B8;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1118; --surface:#171A23; --surface-2:#1D212C; --sunken:#0A0C12;
+  --ink:#E4E8F1; --ink-2:#99A1B5; --ink-3:#767E92;
+  --rule:#2A2F3D; --rule-soft:#232734;
+  --accent:#93A2F7; --accent-2:#AFBAFA; --accent-wash:#1C2140;
+  --pass:#5FBF8B; --pass-wash:#14291F;
+  --note:#E0913F; --note-wash:#2C2015;
+  --open:#E07272; --open-wash:#2E1919;
+  --lane-coord:#93A2F7; --lane-pricing:#D0A445; --lane-legal:#D081B4;
+  --lane-tech:#54B4CC; --lane-comp:#A8BC55; --lane-critic:#9AA2B8;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:2px}
+a{color:var(--accent); text-underline-offset:2px}
+
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px 96px}
+.stack{display:flex; flex-direction:column}
+
+/* ── masthead ─────────────────────────────────────────────── */
+.mast{
+  display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+  gap:24px; padding:56px 0 20px; border-bottom:1px solid var(--ink); margin-bottom:0;
+}
+.mast-name{
+  font-family:var(--display); font-optical-sizing:auto; font-weight:600;
+  font-size:clamp(38px,6.4vw,64px); line-height:.98; letter-spacing:-.015em;
+  margin:0; text-wrap:balance;
+}
+.mast-sub{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 0 12px;
+}
+.mast-meta{
+  font-family:var(--mono); font-size:12px; line-height:1.85; color:var(--ink-2);
+  text-align:right; padding-bottom:6px;
+}
+.mast-meta b{color:var(--ink); font-weight:500}
+.live{
+  display:inline-flex; align-items:center; gap:6px; font-family:var(--mono);
+  font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--pass); background:var(--pass-wash); border:1px solid var(--pass);
+  border-radius:2px; padding:2px 8px;
+}
+.live i{width:6px; height:6px; border-radius:50%; background:var(--pass); display:block}
+
+/* ── metric strip ─────────────────────────────────────────── */
+.metrics{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+  border-bottom:1px solid var(--rule); margin-bottom:64px;
+}
+.metric{padding:20px 20px 22px; border-right:1px solid var(--rule-soft)}
+.metric:last-child{border-right:none}
+.metric-k{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 0 6px;
+}
+.metric-v{
+  font-family:var(--display); font-size:30px; font-weight:600; line-height:1;
+  letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin:0;
+}
+.metric-n{font-family:var(--mono); font-size:11.5px; color:var(--ink-2); margin:7px 0 0}
+
+/* ── section furniture ────────────────────────────────────── */
+.sec{padding-top:8px}
+.sec + .sec{margin-top:76px}
+.sec-head{margin-bottom:28px}
+.eyebrow{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 10px; display:flex; align-items:center; gap:10px;
+}
+.eyebrow::after{content:""; flex:1; height:1px; background:var(--rule)}
+h2{
+  font-family:var(--display); font-weight:600; font-size:clamp(24px,3.2vw,32px);
+  line-height:1.12; letter-spacing:-.012em; margin:0 0 8px; text-wrap:balance;
+}
+.lede{margin:0; color:var(--ink-2); max-width:66ch; font-size:15px}
+
+/* ── cards / desk map ─────────────────────────────────────── */
+.card{
+  background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  box-shadow:var(--shadow);
+}
+.coord{padding:0; overflow:hidden; border-color:var(--accent)}
+.coord-top{
+  display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-start;
+  justify-content:space-between; padding:22px 24px; background:var(--accent-wash);
+  border-bottom:1px solid var(--rule);
+}
+.role{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 0 5px;
+}
+.agent-name{font-family:var(--display); font-size:23px; font-weight:600; line-height:1.15; margin:0}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px}
+.chip{
+  font-family:var(--mono); font-size:11px; padding:2.5px 8px; border-radius:2px;
+  border:1px solid var(--rule); background:var(--surface); color:var(--ink-2); white-space:nowrap;
+}
+.chip-model{border-color:var(--accent); color:var(--accent)}
+.chip-skill{border-style:dashed}
+.id{margin:0; font-family:var(--mono); font-size:11px; color:var(--ink-3); word-break:break-all}
+.coord-body{padding:20px 24px 22px; display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.kv-k{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 0 4px;
+}
+.kv-v{margin:0; font-size:14px; color:var(--ink-2)}
+.kv-v code{font-family:var(--mono); font-size:12.5px; color:var(--ink); background:var(--surface-2); padding:1px 5px; border-radius:2px}
+
+.fanout{
+  display:flex; align-items:center; gap:12px; margin:0; padding:18px 0 14px;
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
+}
+.fanout::before,.fanout::after{content:""; flex:1; height:1px; background:var(--rule)}
+
+.roster{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
+.spec{padding:0; border-top:3px solid var(--lane)}
+.spec summary{
+  list-style:none; cursor:pointer; padding:16px 18px 18px; display:block;
+}
+.spec summary::-webkit-details-marker{display:none}
+.spec summary:hover .agent-name{color:var(--lane)}
+.spec[open] summary{padding-bottom:10px}
+.spec-detail{padding:0 18px 18px; border-top:1px dashed var(--rule); margin-top:2px; padding-top:14px}
+.spec-detail p{margin:0 0 10px; font-size:13.5px; color:var(--ink-2)}
+.spec-detail p:last-child{margin-bottom:0}
+.returned{
+  border-left:2px solid var(--lane); padding-left:12px; font-size:13.5px; color:var(--ink);
+}
+.more{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--lane); margin-top:12px; display:block;
+}
+.spec[open] .more{display:none}
+
+.l-coord{--lane:var(--lane-coord)} .l-pricing{--lane:var(--lane-pricing)}
+.l-legal{--lane:var(--lane-legal)} .l-tech{--lane:var(--lane-tech)}
+.l-comp{--lane:var(--lane-comp)} .l-critic{--lane:var(--lane-critic)}
+
+/* ── lane chart ───────────────────────────────────────────── */
+.panel{background:var(--surface); border:1px solid var(--rule); border-radius:3px; box-shadow:var(--shadow)}
+.panel-head{
+  display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;
+  padding:16px 20px; border-bottom:1px solid var(--rule); background:var(--surface-2);
+}
+.panel-title{
+  font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-2); margin:0;
+}
+.lanes{padding:18px 20px 20px; display:flex; flex-direction:column; gap:9px}
+.lane-row{display:grid; grid-template-columns:150px 1fr 78px; gap:14px; align-items:center}
+.lane-name{
+  font-family:var(--mono); font-size:11.5px; color:var(--lane); font-weight:500;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.lane-track{height:11px; background:var(--sunken); border-radius:1px; position:relative}
+.lane-bar{
+  position:absolute; top:0; bottom:0; background:var(--lane); border-radius:1px;
+  opacity:.9;
+}
+.lane-span{
+  font-family:var(--mono); font-size:11px; color:var(--ink-3); text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.lane-axis{margin-top:2px}
+.lane-ticks{background:transparent; height:14px}
+.lane-ticks i{
+  position:absolute; top:0; font-family:var(--mono); font-style:normal; font-size:10px;
+  color:var(--ink-3); font-variant-numeric:tabular-nums;
+}
+.lane-foot{
+  padding:0 20px 18px; margin:0; font-family:var(--mono); font-size:11px; color:var(--ink-3);
+}
+
+/* Narrow viewports: the 150px name / 78px duration gutters leave almost no
+   track, which squeezes the bars into slivers and stacks the axis labels on
+   top of one another. Below 660px the row stacks instead. */
+@media (max-width:660px){
+  .lanes{gap:14px}
+  .lane-row{grid-template-columns:1fr auto; row-gap:5px}
+  .lane-track{grid-column:1 / -1; height:13px}
+  .lane-axis{display:block; margin-top:6px}
+  .lane-axis span:empty{display:none}
+  .lane-axis .lane-ticks{display:block; width:100%}
+}
+
+/* ── tape ─────────────────────────────────────────────────── */
+.btn{
+  font-family:var(--mono); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+  padding:6px 13px; border-radius:2px; border:1px solid var(--accent); color:var(--accent);
+  background:transparent; cursor:pointer; transition:background .15s, color .15s;
+}
+.btn:hover{background:var(--accent); color:var(--surface)}
+.btn[disabled]{opacity:.4; cursor:default}
+.btn[disabled]:hover{background:transparent; color:var(--accent)}
+.tape{
+  max-height:520px; overflow-y:auto; overflow-x:hidden; background:var(--surface);
+  scroll-behavior:smooth;
+}
+.ev{
+  display:grid; grid-template-columns:48px 108px 1fr; gap:12px; align-items:baseline;
+  padding:7px 20px 7px 0; border-left:3px solid var(--lane);
+  border-bottom:1px solid var(--rule-soft);
+}
+.ev.hidden{display:none}
+.ev-n{
+  font-family:var(--mono); font-size:10.5px; color:var(--ink-3); text-align:right;
+  font-variant-numeric:tabular-nums; padding-left:8px;
+}
+.ev-lane{font-family:var(--mono); font-size:10.5px; color:var(--lane); letter-spacing:.04em}
+/* Long unbreakable tokens (the /mnt/session/outputs/... path) otherwise blow
+   past the grid cell, and .tape clips overflow-x, so they become unreadable
+   on a phone with no way to scroll to them. */
+.ev-t{font-size:13.5px; margin:0; overflow-wrap:anywhere}
+.ev-k-spawn .ev-t,.ev-k-run .ev-t,.ev-k-delegate .ev-t,.ev-k-reply .ev-t,.ev-k-tool .ev-t,
+.ev-k-idle .ev-t{
+  font-family:var(--mono); font-size:12px; color:var(--ink-2);
+}
+.ev-k-reply .ev-t{color:var(--lane)}
+.ev-k-say{background:var(--surface-2)}
+.ev-k-say .ev-t{color:var(--ink)}
+.ev-k-idle .ev-t{color:var(--ink-3)}
+.ev-k-end .ev-t{font-family:var(--mono); font-size:12px; color:var(--pass)}
+.ev-k-done{background:var(--accent-wash)}
+.ev-k-done .ev-t{color:var(--ink); font-weight:500}
+.ev.flash{animation:flash .5s ease-out}
+@keyframes flash{from{background:var(--accent-wash)} to{background:transparent}}
+@media (prefers-reduced-motion: reduce){
+  .tape{scroll-behavior:auto}
+  .ev.flash{animation:none}
+  .btn{transition:none}
+}
+
+/* ── tables ───────────────────────────────────────────────── */
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:600px; font-size:13.5px}
+th{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); text-align:left; font-weight:500; padding:0 14px 10px 0;
+  border-bottom:1px solid var(--ink); white-space:nowrap;
+}
+td{padding:13px 14px 13px 0; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+tr:last-child td{border-bottom:none}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--ink-2)}
+.pill{
+  display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.07em;
+  text-transform:uppercase; padding:2.5px 8px; border-radius:2px; white-space:nowrap; border:1px solid;
+}
+.p-pass{color:var(--pass); background:var(--pass-wash); border-color:var(--pass)}
+.p-note{color:var(--note); background:var(--note-wash); border-color:var(--note)}
+.p-open{color:var(--open); background:var(--open-wash); border-color:var(--open)}
+.bar{display:flex; height:8px; border-radius:1px; overflow:hidden; min-width:88px; background:var(--sunken)}
+.bar-add{background:var(--pass)} .bar-del{background:var(--open)}
+
+/* ── callouts ─────────────────────────────────────────────── */
+.note{
+  border:1px solid var(--rule); border-left:3px solid var(--note); border-radius:3px;
+  background:var(--surface); padding:20px 22px; box-shadow:var(--shadow);
+}
+.note h3{
+  font-family:var(--sans); font-size:14px; font-weight:600; margin:0 0 8px; letter-spacing:-.005em;
+}
+.note p{margin:0 0 10px; font-size:14px; color:var(--ink-2); max-width:72ch}
+.note p:last-child{margin-bottom:0}
+.note strong{color:var(--ink); font-weight:500}
+
+.findings{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.finding{
+  background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  padding:18px 20px; box-shadow:var(--shadow); border-top:3px solid var(--lane);
+}
+.finding h3{font-family:var(--sans); font-size:14.5px; font-weight:600; margin:0 0 4px}
+.finding .tag{
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--lane); display:block; margin-bottom:8px;
+}
+.finding p{margin:0 0 10px; font-size:13.5px; color:var(--ink-2)}
+.finding p:last-child{margin-bottom:0}
+.finding code{font-family:var(--mono); font-size:12px; color:var(--ink); background:var(--surface-2); padding:1px 4px; border-radius:2px}
+
+/* ── run chain ────────────────────────────────────────────── */
+.chain{
+  font-family:var(--mono); font-size:12.5px; background:var(--sunken); border:1px solid var(--rule);
+  border-radius:3px; padding:18px 20px; overflow-x:auto; color:var(--ink-2); line-height:2;
+}
+.chain b{color:var(--ink); font-weight:500}
+.chain em{color:var(--ink-3); font-style:normal}
+
+.metrics.boxed{
+  border:1px solid var(--rule); background:var(--surface); border-radius:3px;
+  box-shadow:var(--shadow); margin-bottom:0;
+}
+.note.note-open{border-left-color:var(--open)}
+.note.note-pass{border-left-color:var(--pass)}
+.flow{display:flex; height:28px; border-radius:2px; overflow:hidden; border:1px solid var(--rule)}
+.flow span{
+  display:flex; align-items:center; justify-content:center; font-family:var(--mono);
+  font-size:10.5px; color:var(--surface); letter-spacing:.05em; white-space:nowrap; overflow:hidden;
+}
+.legend{
+  display:flex; flex-wrap:wrap; gap:8px 22px; margin:12px 0 0; padding:0; list-style:none;
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+}
+.legend i{width:9px; height:9px; border-radius:1px; display:inline-block; margin-right:7px}
+.legend b{color:var(--ink); font-weight:500}
+.subhead{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); margin:38px 0 14px; display:flex; align-items:center; gap:10px;
+}
+.subhead::after{content:""; flex:1; height:1px; background:var(--rule-soft)}
+footer{
+  margin-top:72px; padding-top:22px; border-top:1px solid var(--rule);
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-3); line-height:1.9;
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div>
+    <p class="mast-sub">Partner Basecamp 2026 · Card A · specialist swarm</p>
+    <h1 class="mast-name">Deal&nbsp;Desk Console</h1>
+  </div>
+  <div class="mast-meta">
+    <span class="live"><i></i>build green</span><br>
+    <b>sesn_019NyLvVjpWboXwsWN8FVNvj</b><br>
+    env_01BwCZZsX2FWDv1MFLLJgjX8<br>
+    snapshot 2026-08-28 · JonHaz/specialist-swarm
+  </div>
+</header>
+
+<div class="metrics">
+  <div class="metric">
+    <p class="metric-k">Agents</p>
+    <p class="metric-v">6</p>
+    <p class="metric-n">1 coordinator · 4 specialists · 1 critic</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Wall clock</p>
+    <p class="metric-v">12:59</p>
+    <p class="metric-n">779.0 s · fan-out was 0.9 s of it</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Traps flagged</p>
+    <p class="metric-v">6 / 6</p>
+    <p class="metric-n">denominator fixed before the run</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Spend</p>
+    <p class="metric-v">$3.04</p>
+    <p class="metric-n">measured · 30% of the $10.00 cap</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Stop reason</p>
+    <p class="metric-v" style="font-family:var(--mono);font-size:22px;font-weight:500;padding:5px 0 3px">end_turn</p>
+    <p class="metric-n">no pause, no budget hit</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Deliverable</p>
+    <p class="metric-v">19&nbsp;KB</p>
+    <p class="metric-n">proposal-response.docx · 6 pages</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Preflight</p>
+    <p class="metric-v">4 / 4</p>
+    <p class="metric-n">smoke_test.py exits 0</p>
+  </div>
+  <div class="metric">
+    <p class="metric-k">Merged</p>
+    <p class="metric-v">11</p>
+    <p class="metric-n">+1,976 / −319 across the series</p>
+  </div>
+</div>
+
+<!-- ══ APPROACH ══════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">Approach</p>
+    <h2>Evidence first, then code</h2>
+    <p class="lede">The plan behind this build was written under four rules, and the same four governed
+      execution. They are worth stating because two of them changed the plan before a line was written, and
+      one of them is the reason the preflight exists at all.</p>
+  </div>
+
+  <div class="findings">
+    <div class="finding l-coord">
+      <span class="tag">Rule 1</span>
+      <h3>Cross-reference every claim before acting on it</h3>
+      <p>Every defect in the plan was cited to a file and a line. Two suspicions were <em>dropped</em> mid-pass
+        because the source disproved them: the explicit <code>betas=[…]</code> on <code>files.list</code> looked
+        like a redundant header and is in fact required for session-scoped listing, and two model IDs that
+        looked stale turned out to be current and supported.</p>
+    </div>
+    <div class="finding l-tech">
+      <span class="tag">Rule 2</span>
+      <h3>Verify API surface, never recall it</h3>
+      <p>Every shape in the build was checked against the reference rather than remembered: the pre-built skill
+        form, the roster <code>description</code> requirement, the budget object's minor-units string, the
+        <code>/mnt/session/outputs/</code> contract. Recall is where a plausible-looking wrong argument comes
+        from.</p>
+    </div>
+    <div class="finding l-pricing">
+      <span class="tag">Rule 3</span>
+      <h3>Turn fuzzy adjectives into numbers</h3>
+      <p>"Fast", "parallel" and "branded" are not acceptance criteria. Each workstream shipped with a check
+        that passes or fails, written before the code — which is why the acceptance table below can report two
+        non-passes instead of quietly rounding them up.</p>
+    </div>
+    <div class="finding l-comp">
+      <span class="tag">Rule 4</span>
+      <h3>Prefer deterministic gates over judgement</h3>
+      <p>Where a property can be asserted by a script instead of eyeballed, it is. Repeated failures become
+        tools, validators, docs or policies — not more prompt advice. Every check in
+        <code>smoke_test.py</code> is a fault that once cost a full fan-out to discover.</p>
+    </div>
+  </div>
+
+  <div class="note note-pass" style="margin-top:18px">
+    <h3>Why eleven merge commits and not eleven squashes</h3>
+    <p>A squash rewrites the branch SHA, so <code>main</code> no longer contains the branch commit as an
+      ancestor. Every downstream PR's merge-base is orphaned and each child re-shows its ancestors' diffs.
+      That had already happened once, on PR #2, and unwinding it took a rebase plus eight manual ref updates.</p>
+    <p><strong>Merge commits kept every child diff byte-identical through all nine merges</strong> — that is
+      the evidence the strategy worked, not an assertion about it. One cost, learned the hard way: deleting a
+      merged base branch <em>closed</em> its dependent PR rather than retargeting it, so the remaining branches
+      were retargeted first and deleted only at the end.</p>
+  </div>
+</section>
+
+<!-- ══ THE DESK ══════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">The desk</p>
+    <h2>One coordinator, one level of delegation</h2>
+    <p class="lede">The roster the API sees is built from the recorded agent IDs, and the coordinator picks
+      delegates by reading each entry's <code>description</code> — so those descriptions are functional, not
+      documentation. Open a card for the brief it carries and what it returned on the recorded run.</p>
+  </div>
+
+  <div class="card coord l-coord">
+    <div class="coord-top">
+      <div>
+        <p class="role">Coordinator</p>
+        <p class="agent-name">Deal Desk Senior Partner</p>
+        <div class="chips">
+          <span class="chip chip-model">claude-opus-5</span>
+          <span class="chip chip-model">effort · xhigh</span>
+          <span class="chip chip-skill">docx · anthropic</span>
+          <span class="chip chip-skill">firm-voice · custom</span>
+        </div>
+      </div>
+      <p class="id">agent_0156GA6BweFq2V4Z3c5sxs6q</p>
+    </div>
+    <div class="coord-body">
+      <div>
+        <p class="kv-k">Fan-out</p>
+        <p class="kv-v">Delegates to all four specialists in a single message, then waits. The critic is a
+          second, later round-trip — not part of the burst.</p>
+      </div>
+      <div>
+        <p class="kv-k">Output contract</p>
+        <p class="kv-v"><code>/mnt/session/outputs/proposal-response.docx</code> — stated in the system prompt
+          and again in the kickoff message.</p>
+      </div>
+      <div>
+        <p class="kv-k">Cost lever</p>
+        <p class="kv-v">Opus at <code>xhigh</code> over a long RFP is the largest single cost in the build.
+          Effort is agent config only — a per-session override is silently ignored.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="fanout">delegates to</p>
+
+  <div class="roster">
+
+    <details class="card spec l-pricing">
+      <summary>
+        <p class="role">Specialist</p>
+        <p class="agent-name">Pricing Specialist</p>
+        <div class="chips">
+          <span class="chip chip-model">claude-sonnet-5</span>
+          <span class="chip chip-skill">pricing-playbook</span>
+        </div>
+        <span class="more">brief + result ▾</span>
+      </summary>
+      <div class="spec-detail">
+        <p><b>Brief the coordinator reads:</b> commercial terms for inbound RFPs. Give it the RFP text and the
+          past-wins data; it returns a discount band, term and payment structure, which concessions to accept
+          or refuse, and margin risks.</p>
+        <p class="returned">Returned: 28% strategic ceiling, refuse the 35% floor and MFN outright, Net 60
+          against their Net 90.</p>
+        <p class="id">agent_01M32ujJkgCY9o8s4cvgB5dG</p>
+      </div>
+    </details>
+
+    <details class="card spec l-legal">
+      <summary>
+        <p class="role">Specialist</p>
+        <p class="agent-name">Legal Reviewer</p>
+        <div class="chips">
+          <span class="chip chip-model">claude-sonnet-5</span>
+          <span class="chip chip-skill">legal-checklist</span>
+        </div>
+        <span class="more">brief + result ▾</span>
+      </summary>
+      <div class="spec-detail">
+        <p><b>Brief the coordinator reads:</b> contract risk on inbound RFPs. Returns every clause that
+          conflicts with our standard positions, each with a recommended counter and a severity of blocker,
+          negotiable, or acceptable.</p>
+        <p class="returned">Returned: five blockers, all with counters. Also supplied the 99.95% standard-tier
+          number that overrode the battlecard's 99.99% claim.</p>
+        <p class="id">agent_01TMGWJsUBadHpbSNpnR2ogT</p>
+      </div>
+    </details>
+
+    <details class="card spec l-tech">
+      <summary>
+        <p class="role">Specialist</p>
+        <p class="agent-name">Technical Fit Specialist</p>
+        <div class="chips">
+          <span class="chip chip-model">claude-sonnet-5</span>
+          <span class="chip chip-skill">technical-fit</span>
+        </div>
+        <span class="more">brief + result ▾</span>
+      </summary>
+      <div class="spec-detail">
+        <p><b>Brief the coordinator reads:</b> product capability fit. Returns what we meet fully, partially, or
+          not at all, an overall fit score, and the single biggest risk. Briefed to be honest about gaps rather
+          than claim universal fit.</p>
+        <p class="returned">Returned: 12 of 14 met. Named the SLA gap and priced the add-on; called Power BI a
+          strength via the DirectQuery adapter; graded ingest met-in-full while flagging that 250k events/sec is
+          a test-harness number, not a production one.</p>
+        <p class="id">agent_01HLXg3ahawyPWjkfQ4PJwFY</p>
+      </div>
+    </details>
+
+    <details class="card spec l-comp">
+      <summary>
+        <p class="role">Specialist</p>
+        <p class="agent-name">Competitive Intel Analyst</p>
+        <div class="chips">
+          <span class="chip chip-model">claude-haiku-4-5</span>
+          <span class="chip chip-skill">competitive-intel</span>
+        </div>
+        <span class="more">brief + result ▾</span>
+      </summary>
+      <div class="spec-detail">
+        <p><b>Brief the coordinator reads:</b> competitive positioning. Returns likely competitors, their
+          strengths and weaknesses on this specific deal, our best angles, and one trap to avoid. Fast and
+          cheap — a battlecard lookup, not a deep analysis.</p>
+        <p class="returned">Returned: Databricks is the real threat, TCO is the battleground. Its 99.99% uptime
+          claim was wrong and the coordinator overrode it.</p>
+        <p class="id">agent_015hSZ1AKktin7nECXCaeMXE</p>
+      </div>
+    </details>
+
+    <details class="card spec l-critic">
+      <summary>
+        <p class="role">Reviewer · stretch goal</p>
+        <p class="agent-name">Deal Desk Critic</p>
+        <div class="chips">
+          <span class="chip chip-model">claude-opus-5</span>
+          <span class="chip chip-model">effort · high</span>
+          <span class="chip">no skill</span>
+        </div>
+        <span class="more">brief + result ▾</span>
+      </summary>
+      <div class="spec-detail">
+        <p><b>Brief the coordinator reads:</b> reviews the assembled draft and returns SHIP IT or REVISE with
+          specific defects. Runs after synthesis, not in the fan-out.</p>
+        <p class="returned">Round 1 — REVISE: caught a real arithmetic error (Year 5 was 2.6×, actually 3.5×)
+          and a document that promised a flat fee in the summary while introducing a volume true-up in the risks
+          table. Round 2 — SHIP IT with three copy edits.</p>
+        <p class="id">agent_01Aq8nAmfUq8tpuFniBEJMff</p>
+      </div>
+    </details>
+
+  </div>
+</section>
+
+<!-- ══ THE TAPE ══════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">The tape</p>
+    <h2>The parallelism, as it was recorded</h2>
+    <p class="lede">The demo's claim is that the fan-out is visibly parallel. It is: all four
+      <code>thread_created</code> and <code>delegate</code> events land before the first reply comes back,
+      which is a genuine single-message fan-out rather than four fast sequential turns. Every timestamp below is
+      measured: <code>sessions.events.list()</code> returns a <code>processed_at</code> on all 161 events, and
+      the offsets are differences from the first. The printed run log has none of this — it came back out of
+      the API afterwards.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <p class="panel-title">Thread lifespans · measured, seconds</p>
+      <p class="panel-title" style="color:var(--ink-3)">6 threads · 779.0 s</p>
+    </div>
+    <div class="lanes" id="lanes"></div>
+    <p class="lane-foot">All four specialist threads open between 57.1 s and 58.0 s, and all four have
+      reported by 103.2 s. The critic's bar is in two pieces because it ran twice — once on v1, once on v2.</p>
+  </div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="panel-head">
+      <p class="panel-title">Event stream · session sesn_019NyLvVjpWboXwsWN8FVNvj</p>
+      <button class="btn" id="replay" type="button">▶ Replay the fan-out</button>
+    </div>
+    <div class="tape" id="tape"></div>
+  </div>
+</section>
+
+<!-- ══ THE CLOCK ═════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">The clock</p>
+    <h2>Thirteen minutes, and where they went</h2>
+    <p class="lede">The run took <strong>779.0 seconds — 12 min 59 s</strong> from the first event to
+      <code>session.status_idle</code>. The session reports <code>usage.active_seconds</code> of 779.6 against
+      that same span, so it was busy essentially the whole time; none of the wall clock is idle waiting.</p>
+  </div>
+
+  <p class="subhead">Phase breakdown · derived from event <code>processed_at</code></p>
+
+  <div class="tscroll">
+    <table>
+        <thead>
+          <tr><th>Phase</th><th class="num">Starts</th><th class="num">Runs for</th><th class="num">Share</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Coordinator reads the RFP</td><td class="num">0.0 s</td><td class="num">57.1 s</td><td class="num">7%</td></tr>
+          <tr><td>Fan-out — four threads created and briefed</td><td class="num">57.1 s</td><td class="num">0.9 s</td><td class="num">0.1%</td></tr>
+          <tr><td>Four specialists working in parallel</td><td class="num">57.1 s</td><td class="num">46.1 s</td><td class="num">6%</td></tr>
+          <tr><td>Synthesis and draft v1</td><td class="num">103.2 s</td><td class="num">153.4 s</td><td class="num">20%</td></tr>
+          <tr><td>Critic round 1 → REVISE</td><td class="num">256.6 s</td><td class="num">100.9 s</td><td class="num">13%</td></tr>
+          <tr><td>Revision to v2</td><td class="num">357.8 s</td><td class="num">171.6 s</td><td class="num">22%</td></tr>
+          <tr><td>Critic round 2 → SHIP IT</td><td class="num">529.4 s</td><td class="num">70.7 s</td><td class="num">9%</td></tr>
+          <tr><td>Build, render and verify the .docx</td><td class="num">600.4 s</td><td class="num">178.6 s</td><td class="num">23%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="findings" style="margin-top:18px">
+    <div class="finding l-coord">
+      <span class="tag">Finding</span>
+      <h3>The fan-out is the fastest thing in the run</h3>
+      <p>Opening and briefing all four specialists took <strong>0.9 seconds</strong>, and every one of them
+        had reported inside 46.1 s. The behaviour the demo exists to show is about <strong>6% of the wall
+        clock</strong>. Everything slow here is single-threaded coordinator work.</p>
+    </div>
+    <div class="finding l-tech">
+      <span class="tag">Finding</span>
+      <h3>Measured speedup: 2.8×, not 4×</h3>
+      <p>The four threads spent 129.7 s of agent time between them — 43.0 Pricing, 20.5 Legal, 45.4 Technical
+        Fit, 20.8 Competitive — inside a 46.1 s window. That is <strong>2.8×</strong> against running the same
+        four one after another. Not 4×, because the window is set by the slowest specialist and not the
+        average one.</p>
+    </div>
+    <div class="finding l-critic">
+      <span class="tag">Finding</span>
+      <h3>The quality loop cost more than the work</h3>
+      <p>Critic round 1, the revision, and round 2 come to <strong>343.2 s — 44% of the run</strong>, more
+        than everything before the first draft. Building and visually verifying the document is another 179 s.
+        The proposal itself was written in the first four and a half minutes; the remaining eight went on
+        checking it and rendering it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ EVALS ═════════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">Evals</p>
+    <h2>Three layers, and not a test suite among them</h2>
+    <p class="lede">There is no <code>tests/</code> directory, no fixtures, no CI, and no test dependency in
+      <code>requirements.txt</code>. What this build has instead is one deterministic preflight that runs
+      before any spend, one adversarial judge that runs inside the session, and seven outcome checks written
+      before the build and graded after it. Each layer catches a different class of failure. One class is
+      still uncovered, and it is named at the bottom of this section.</p>
+  </div>
+
+  <div class="findings">
+    <div class="finding l-tech">
+      <span class="tag">Layer 1 · deterministic · pre-spend</span>
+      <h3>The preflight</h3>
+      <p><code>smoke_test.py</code> — four checks, asserted against the live API rather than fixtures. It
+        creates nothing, updates nothing and starts no session, so it costs nothing to run as often as you
+        like. It stops at the first failure, and every failure message names the script that fixes it.</p>
+      <p><b>State files</b> exist · <b>every recorded agent</b> resolves and carries a non-empty description ·
+        the <b>coordinator's roster</b> matches <code>.specialist_ids.json</code> exactly · <b>every mapped
+        skill</b> is actually attached.</p>
+      <p>Each one is a postmortem. An agent with an empty description that the coordinator therefore never
+        delegated to. A coordinator missing <code>docx</code> that silently emitted markdown. A skill recorded
+        in <code>.skill_ids.json</code> but never attached. Each cost a full fan-out to discover once.</p>
+    </div>
+    <div class="finding l-critic">
+      <span class="tag">Layer 2 · adversarial · in-session</span>
+      <h3>The critic</h3>
+      <p>The only eval that runs <em>during</em> the run. Three verdicts: <b>SHIP IT</b>, <b>REVISE</b> with up
+        to five specific fixes, or <b>STOP</b> with a reason not to bid. On this run it returned REVISE, then
+        SHIP IT, and caught an arithmetic error the coordinator would otherwise have shipped.</p>
+      <p><strong>The limit worth naming:</strong> it is the model judging the model, one round, against no
+        ground truth. The deliverable's <em>existence</em> is gated externally —
+        <code>report_deliverable()</code> fails loudly when the expected <code>.docx</code> is absent — but its
+        <em>quality</em> rests on a self-report.</p>
+    </div>
+    <div class="finding l-coord">
+      <span class="tag">Layer 3 · outcome · post-hoc</span>
+      <h3>The acceptance checks</h3>
+      <p>Seven checks committed in the plan document before any code was written, so the grading could not
+        drift to meet the result. Two of the seven did not come back a clean pass, and both are recorded as
+        what they are rather than rounded up.</p>
+      <p>They are the layer that catches what the other two cannot: whether the thing the swarm produced is
+        actually the thing that was asked for.</p>
+    </div>
+  </div>
+
+  <p class="subhead">Layer 3 · graded</p>
+
+  <div class="tscroll">
+    <table>
+      <thead>
+        <tr><th style="width:34px">#</th><th style="width:230px">Check</th><th style="width:104px">Result</th><th>As measured</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num">1</td><td>Branded <code>.docx</code> in <code>outputs/</code></td>
+          <td><span class="pill p-pass">Pass</span></td>
+          <td>19 KB, valid OOXML with a <code>styles.xml</code> part, ~17k characters of body text across nine sections.</td>
+        </tr>
+        <tr>
+          <td class="num">2</td><td>Four specialist threads spawn together</td>
+          <td><span class="pill p-pass">Pass +</span></td>
+          <td>Stronger than the check asked: all four spawn and delegate events precede the first reply, so it is a real single-message fan-out.</td>
+        </tr>
+        <tr>
+          <td class="num">3</td><td>The planted traps are flagged</td>
+          <td><span class="pill p-pass">Pass · 6/6</span></td>
+          <td>35% floor refused at 28%; MFN refused with a fixed five-year unit rate; Net 90; uncapped breach liability; no-notice audits; full IP assignment declined with a licence-back counter.</td>
+        </tr>
+        <tr>
+          <td class="num">4</td><td>Technical Fit is honest, not universal</td>
+          <td><span class="pill p-note">Nuanced</span></td>
+          <td>Passed on the SLA gap and on Power BI. Two items the plan predicted did not appear — correctly. See below.</td>
+        </tr>
+        <tr>
+          <td class="num">5</td><td>Console URL resolves</td>
+          <td><span class="pill p-note">Untested</span></td>
+          <td>Printed in the corrected shape and now sourced from the workspace ID. Not clicked as part of this pass.</td>
+        </tr>
+        <tr>
+          <td class="num">6</td><td>Re-running the create scripts is safe</td>
+          <td><span class="pill p-pass">Pass</span></td>
+          <td>Both refuse and list what exists; <code>--archive-existing</code> and <code>--force</code> behave as documented.</td>
+        </tr>
+        <tr>
+          <td class="num">7</td><td><code>download_deliverable.py</code> re-fetches</td>
+          <td><span class="pill p-pass">Pass</span></td>
+          <td>Re-pulled the same <code>.docx</code> from <code>.last_session_id</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="margin-top:22px">
+    <h3>Check 4 — why two predicted gaps were right to be absent</h3>
+    <p>The 99.99% ask against our 99.95% standard tier surfaced exactly as intended: named in the executive
+      summary, priced at $120,000/yr, and — the part that makes it credible — <strong>with a recommendation not
+      to buy it</strong>.</p>
+    <p>The plan also expected the 250ms–1s streaming-latency weakness and the missing Power Apps connector.
+      Neither appeared. Both are in the <code>technical-fit</code> skill's weak-list, but the RFP asks for
+      neither: it says "real-time ingest from ~40,000 IoT devices" and never mentions sub-second query latency
+      or Power Apps. Grading against requirements the customer did not state would have invented gaps.</p>
+    <p><strong>The lesson worth keeping:</strong> a weak-list earns its place by being available when relevant,
+      not by being recited every time.</p>
+  </div>
+
+  <p class="subhead">The layer that is missing</p>
+
+  <div class="note note-open">
+    <h3>Nothing checks that a deployed agent still matches the repo describing it</h3>
+    <p>Retrieving the four specialists today and diffing them against
+      <code>create_specialists.py</code>: three match exactly, and one does not. The live <strong>Technical Fit
+      Specialist</strong> is still running its pre-WS3 system prompt, which names
+      <code>product-overview.md</code> as its capability map instead of the <code>technical-fit</code> skill
+      that WS3 promoted it into. Its description, model and skill attachment are all correct — so all four
+      preflight checks pass, and the drift is invisible.</p>
+    <p><strong>Why it happened:</strong> <code>upload_skills.py</code> attaches skills with
+      <code>agents.update</code>, which bumps the agent version without touching <code>system</code>; and
+      <code>create_specialists.py</code> deliberately refuses to run once <code>.specialist_ids.json</code>
+      exists. Editing a specialist's prompt in the repo therefore has no effect on the live agent until someone
+      rebuilds with <code>--archive-existing</code>.</p>
+    <p><strong>Why check 4 passed anyway:</strong> the weak-list the prompt stopped naming lives in the skill
+      body, and the skill was attached. The agent found it without being told to — which is a point in the
+      skill's favour and not a reason to leave the prompt stale.</p>
+    <p>By this repo's own rule, that earns a fifth preflight check comparing the deployed <code>system</code>
+      and <code>description</code> against the repo definitions — not a paragraph in a docstring.</p>
+  </div>
+</section>
+
+<!-- ══ THE RATE ══════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">The rate</p>
+    <h2>Four rates, and two that don't exist</h2>
+    <p class="lede">The run itself is binary, and it passed: the session closed on <code>end_turn</code> with
+      the deliverable present and verified, no thread parked on <code>requires_action</code>, and $6.96 of the
+      cap unspent. Everything past that is a rate — and a rate is only worth as much as its denominator, so
+      each one below is shown with where its denominator came from.</p>
+  </div>
+
+  <p class="subhead">Success rates and their provenance · one session, n&nbsp;=&nbsp;1</p>
+
+  <div class="tscroll">
+    <table>
+        <thead>
+          <tr><th style="width:150px">Measure</th><th class="num" style="width:104px">Result</th><th>How the denominator was set, and how it was graded</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Planted traps flagged</td>
+            <td class="num" style="color:var(--pass)">6 / 6</td>
+            <td>The only denominator fixed <em>before</em> the run. The synthetic RFP was written with exactly
+              six adversarial terms — 35% discount floor, MFN, Net 90, uncapped breach liability, no-notice
+              audits, full IP assignment. Graded by reading the delivered document for each one and confirming
+              an explicit refusal or counter-position, not a mention.</td>
+          </tr>
+          <tr>
+            <td>Preflight checks</td>
+            <td class="num" style="color:var(--pass)">4 / 4</td>
+            <td>Whatever <code>smoke_test.py</code> asserts, in order, against the live API. Deterministic and
+              free to re-run, so this is a standing gate rather than a snapshot — but it only covers the four
+              faults that have already cost a full fan-out to discover.</td>
+          </tr>
+          <tr>
+            <td>Acceptance checks</td>
+            <td class="num">6 / 6 graded</td>
+            <td>Seven were written before the code. Five passed outright; check 4 passed what it asserted, with
+              both predicted sub-items correctly absent; check 5 — the Console URL — was printed but never
+              clicked, so it has no result. Reported over 6 and not 7: <strong>86% would score an ungraded
+              check as a failure, 100% would score it as a pass</strong>. Neither is true.</td>
+          </tr>
+          <tr>
+            <td>Agent config fidelity</td>
+            <td class="num" style="color:var(--note)">3 / 4</td>
+            <td>Not from the run. Measured afterwards by retrieving each specialist and diffing its live
+              <code>system</code> and <code>description</code> against <code>create_specialists.py</code>. Three
+              match; the Technical Fit Specialist has drifted. No check covers this, which is exactly why it
+              went unnoticed through four green preflights.</td>
+          </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note note-open" style="margin-top:18px">
+    <h3>The critic has no denominator, so it gets no rate</h3>
+    <p>It found two substantive defects in the draft and three copy edits, and its arithmetic was right —
+      280 + (12 × 60) = 1,000 TB is 3.5× of 280, not the 2.6× the draft claimed. What nobody knows is
+      <strong>how many defects the draft actually contained</strong>.</p>
+    <p>Defects found is not defect coverage. "The critic caught 100% of the errors" would be unfalsifiable
+      here, so it isn't claimed. Making it a rate would mean seeding the draft with a known number of planted
+      errors the way the RFP was seeded with six planted traps — which is the obvious next eval and has not
+      been built.</p>
+  </div>
+
+  <div class="note note-open" style="margin-top:14px">
+    <h3>n = 1, so none of these are frequencies</h3>
+    <p>Every number above describes <strong>one session</strong>. "6 / 6 traps" means this desk caught MFN
+      once, not that it catches MFN. Turning any of them into a rate you could quote needs repeat runs against
+      the same RFP, and then variants of it.</p>
+    <p>The cost of finding out is known: <strong>$3.04 and thirteen minutes per run</strong>. That is the
+      argument for the spend cap being a real feature rather than paperwork — it makes the repetition
+      affordable. It just hasn't been done yet.</p>
+  </div>
+</section>
+
+<!-- ══ PRICING ═══════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">Pricing</p>
+    <h2>What a six-agent fan-out actually cost</h2>
+    <p class="lede">$3.04 — measured, not estimated. The session reports its own <code>list_cost</code>, and
+      the cap was never the binding constraint: the run stopped at 30% of it, on <code>end_turn</code>.</p>
+  </div>
+
+  <div class="metrics boxed">
+    <div class="metric">
+      <p class="metric-k">List cost</p>
+      <p class="metric-v">$3.04</p>
+      <p class="metric-n">of a $10.00 session cap</p>
+    </div>
+    <div class="metric">
+      <p class="metric-k">Output tokens</p>
+      <p class="metric-v">70,591</p>
+      <p class="metric-n">the half that cannot be cached</p>
+    </div>
+    <div class="metric">
+      <p class="metric-k">Input surface</p>
+      <p class="metric-v">1,440,672</p>
+      <p class="metric-n">across all six threads</p>
+    </div>
+    <div class="metric">
+      <p class="metric-k">Cache read</p>
+      <p class="metric-v">88.7%</p>
+      <p class="metric-n">of that input surface</p>
+    </div>
+    <div class="metric">
+      <p class="metric-k">Active</p>
+      <p class="metric-v">13:00</p>
+      <p class="metric-n">779.6s billed active</p>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><p class="panel-title">Where the 1,440,672 input tokens came from</p></div>
+    <div style="padding:18px 20px 20px">
+      <div class="flow">
+        <span style="background:var(--lane-coord); width:88.66%">cache read · 1,277,273</span>
+        <span style="background:var(--lane-pricing); width:11.34%">163,308</span>
+        <span style="background:var(--lane-comp); min-width:3px; flex:0 0 3px"></span>
+      </div>
+      <ul class="legend">
+        <li><i style="background:var(--lane-coord)"></i><b>1,277,273</b> cache read · 88.66%</li>
+        <li><i style="background:var(--lane-pricing)"></i><b>163,308</b> cache write, 5-minute · 11.34%</li>
+        <li><i style="background:var(--lane-comp)"></i><b>91</b> fresh input · 0.006%</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note note-pass" style="margin-top:18px">
+    <h3>Why it isn't more</h3>
+    <p>A coordinator fan-out re-reads the same RFP, the same past-wins file and the same skill bodies across
+      six threads and dozens of turns. Almost none of that is billed as fresh input: <strong>91 tokens of a
+      1.44M input surface were new.</strong> Caching is the reason a six-agent, thirteen-minute session that
+      ends in a six-page Word document lands at three dollars rather than an order of magnitude more.</p>
+    <p>Output is the half that cannot be cached, and at 70,591 tokens it is where the money went. If this run
+      needs to get cheaper, shortening what the agents <em>write</em> beats trimming what they read.</p>
+  </div>
+
+  <p class="subhead">Model and effort, per role</p>
+
+  <div class="tscroll">
+    <table>
+      <thead>
+        <tr><th style="width:196px">Role</th><th style="width:150px">Model</th><th style="width:78px">Effort</th><th style="width:118px">Set by</th><th>Why this tier</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Senior Partner</td><td class="num">claude-opus-5</td><td class="num">xhigh</td>
+          <td><span class="pill p-pass">chosen</span></td>
+          <td>Synthesis quality is what the deliverable is judged on. This is the single largest cost lever in the build.</td>
+        </tr>
+        <tr>
+          <td>Deal Desk Critic</td><td class="num">claude-opus-5</td><td class="num">high</td>
+          <td><span class="pill p-pass">chosen</span></td>
+          <td>Its whole value is pushing back on the coordinator, so it has to be at least as sharp as the thing it reviews.</td>
+        </tr>
+        <tr>
+          <td>Pricing Specialist</td><td class="num">claude-sonnet-5</td><td class="num">high</td>
+          <td><span class="pill p-note">default</span></td>
+          <td>A deep read against a rule library. Sonnet 5 is both more capable and cheaper per token than the Sonnet 4.6 previously pinned here.</td>
+        </tr>
+        <tr>
+          <td>Legal Reviewer</td><td class="num">claude-sonnet-5</td><td class="num">high</td>
+          <td><span class="pill p-note">default</span></td>
+          <td>As above — a clause-by-clause read against the position library.</td>
+        </tr>
+        <tr>
+          <td>Technical Fit</td><td class="num">claude-sonnet-5</td><td class="num">high</td>
+          <td><span class="pill p-note">default</span></td>
+          <td>As above — a requirement-by-requirement grade against the capability map.</td>
+        </tr>
+        <tr>
+          <td>Competitive Intel</td><td class="num">claude-haiku-4-5</td><td class="num">—</td>
+          <td><span class="pill p-note">default</span></td>
+          <td>A battlecard lookup, not an analysis. The cheapest model is the right one, and no effort field is set at all.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="margin-top:20px">
+    <h3>The default is not free</h3>
+    <p><code>config.py</code> pins effort for two roles and notes that a role absent from the map "is created
+      without an <code>effort</code> field and runs at the model default". Retrieving the agents shows what
+      that default resolves to: <strong><code>high</code> on all three Sonnet specialists</strong>, and no
+      effort field at all on Haiku.</p>
+    <p>So four of the six agents run at high effort or above, and only two of those four were a deliberate
+      choice. If a re-run needs to get cheaper, that is the first place to look — before touching the
+      coordinator's <code>xhigh</code>.</p>
+  </div>
+
+  <div class="note" style="margin-top:14px">
+    <h3>How the cap behaves, and why it is set at create time</h3>
+    <p>The amount is <strong>minor units as an integer string</strong>: <code>"1000"</code> is $10.00, and a
+      decimal form like <code>"10.00"</code> is rejected. USD only. One cap is shared across every thread in
+      the session, not per agent.</p>
+    <p>It is <strong>create-only, and its removal is one-way</strong> — which is why it is passed at
+      <code>sessions.create</code> and never adjusted afterwards. Reaching it is a pause, not a failure:
+      <code>stop_reason.type == "budget_reached"</code>. A session parked there accepts only
+      <code>user.tool_confirmation</code>, <code>user.tool_result</code>,
+      <code>user.custom_tool_result</code> or <code>user.interrupt</code> — a plain <code>user.message</code>
+      is a 400. Start a new session with a higher cap rather than trying to raise this one.</p>
+  </div>
+</section>
+
+<!-- ══ WHAT THE PLAN MISSED ══════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">Found in execution</p>
+    <h2>Two defects the plan did not anticipate</h2>
+    <p class="lede">Both were silent. Nothing errored, and in one case the output looked entirely plausible —
+      which is the argument for the preflight existing at all.</p>
+  </div>
+
+  <div class="findings">
+    <div class="finding l-legal">
+      <span class="tag">Silent · shared workspace</span>
+      <h3>The build was adopting strangers' skills</h3>
+      <p><code>upload_skills.py</code> resolved skills by <code>display_name</code>, assuming the Skills API
+        enforces uniqueness. It does not — two skills with the same display name both create successfully.</p>
+      <p>This workspace is shared with many forks of the repo, and <strong>four of our five skills were
+        resolving to bundles uploaded by strangers three months earlier.</strong> Everything ran; the output
+        looked fine.</p>
+      <p>Identity is now the <code>skill_id</code> recorded in <code>.skill_ids.json</code>, display names are
+        namespaced for Console readability only, and content is pushed with
+        <code>skills.versions.create</code>.</p>
+    </div>
+    <div class="finding l-critic">
+      <span class="tag">Guard on the wrong half</span>
+      <h3>Rebuilding the coordinator stranded the critic</h3>
+      <p><code>create_coordinator.py --archive-existing</code> yields a coordinator with no <code># Critic</code>
+        block while the critic agent stays alive and recorded — and the critic script's guard then refused to
+        re-wire it.</p>
+      <p>Creating the critic is the expensive part; wiring it is cheap and already idempotent. The script now
+        reuses a recorded critic and re-applies the wiring on every run.</p>
+    </div>
+  </div>
+
+  <div class="findings" style="margin-top:14px">
+    <div class="finding l-comp">
+      <span class="tag">Deviation · WS6</span>
+      <h3>The event loop exits instead of continuing</h3>
+      <p>The plan said to continue on <code>requires_action</code>. Nothing in <code>run_deal_desk.py</code>
+        answers a tool confirmation, so continuing would stream forever. It reports the pause loudly and exits
+        non-zero instead. <code>session.status_idle</code> never means "finished" on its own — the nested
+        <code>stop_reason</code> does.</p>
+    </div>
+    <div class="finding l-pricing">
+      <span class="tag">Deviation · WS4</span>
+      <h3>Refusal shipped instead of idempotence</h3>
+      <p>The plan offered "idempotent, or at minimum refuse with a <code>--force</code> flag". Refusal is what
+        shipped, plus <code>--archive-existing</code> — because agents have no delete, only a permanent
+        archive, so a genuinely idempotent create is not available.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ THE BUILD ═════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">The build</p>
+    <h2>Eleven pull requests, merged in dependency order</h2>
+    <p class="lede">The seven workstreams landed as a stacked branch series, one PR each, plus two follow-ups
+      found during execution and the execution notes themselves. Merge commits, not squashes — a squash rewrites
+      the branch SHA, which orphans every downstream merge-base and makes each child PR re-show its ancestors'
+      diffs.</p>
+  </div>
+
+  <div class="tscroll">
+    <table>
+      <thead>
+        <tr><th style="width:44px">PR</th><th style="width:210px">Branch</th><th>What it changed</th><th style="width:56px">Files</th><th style="width:120px">Diff</th></tr>
+      </thead>
+      <tbody id="prs"></tbody>
+    </table>
+  </div>
+
+  <div class="sec-head" style="margin-top:44px; margin-bottom:16px">
+    <p class="eyebrow">Run order</p>
+    <h2>The chain, and why it is this chain</h2>
+  </div>
+  <div class="chain">
+    <b>python3 setup_environment.py</b>&nbsp;&nbsp;<em>→ writes .environment_id</em><br>
+    <b>python3 create_specialists.py</b>&nbsp;&nbsp;<em>→ writes .specialist_ids.json</em><br>
+    <b>python3 create_coordinator.py</b>&nbsp;&nbsp;<em>→ reads specialists, writes .coordinator_id</em><br>
+    <b>python3 upload_skills.py</b>&nbsp;&nbsp;<em>→ reads BOTH id files, writes .skill_ids.json</em><br>
+    <b>python3 stretch_critic_subagent.py</b>&nbsp;&nbsp;<em>→ optional; creates and wires the critic</em><br>
+    <b>python3 smoke_test.py</b>&nbsp;&nbsp;<em>→ asserts the build, spends nothing</em><br>
+    <b>python3 run_deal_desk.py</b>&nbsp;&nbsp;<em>→ the run</em>
+  </div>
+  <p class="lede" style="margin-top:14px">Skills upload <em>after</em> the coordinator exists, because
+    <code>firm-voice</code> attaches to the coordinator and the script needs <code>.coordinator_id</code>. The
+    scripts are coupled by untracked dot-files at the repo root, not by imports — which is why a stale one
+    silently points a run at somebody else's agents.</p>
+</section>
+
+<!-- ══ OPEN ══════════════════════════════════════════════ -->
+<section class="sec stack">
+  <div class="sec-head">
+    <p class="eyebrow">Still open</p>
+    <h2>What this console cannot yet show green</h2>
+  </div>
+  <div class="tscroll">
+    <table>
+      <thead><tr><th style="width:110px">Status</th><th style="width:250px">Item</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="pill p-open">Open</span></td>
+          <td>One deployed prompt has drifted from the repo</td>
+          <td>The live Technical Fit Specialist still runs its pre-WS3 system prompt. No preflight check
+            compares a deployed agent against the definition that describes it, so nothing catches this class
+            of drift. Fixing the agent needs a rebuild with <code>--archive-existing</code>; fixing the class
+            needs a fifth check.</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-open">Open</span></td>
+          <td>The output path is prose, not code</td>
+          <td>Nothing at the API level stops the coordinator writing outside
+            <code>/mnt/session/outputs/</code>. <code>report_deliverable()</code> catches it after the fact
+            rather than preventing it. The one place in this build where a rule that should be enforced is still
+            enforced by prompt text.</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-note">Untested</span></td>
+          <td>Console session link</td>
+          <td>Built from <code>ANTHROPIC_WORKSPACE_ID</code>, defaulting to <code>default</code> — which is
+            correct only when the key belongs to the org's Default workspace. Printed, not yet clicked.</td>
+        </tr>
+        <tr>
+          <td><span class="pill p-open">By decision</span></td>
+          <td>Scenario cards B and C</td>
+          <td>M&amp;A Diligence and Hire-to-Onboard remain unimplemented. Both need new
+            <code>synthetic-data/</code> fixtures and a rewritten roster; nothing in this build is shaped
+            around them.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Snapshot of build state and one recorded run · 2026-08-28 · JonHaz/specialist-swarm @ 7009056<br>
+  Agent, environment, session and skill IDs are server-side and personal to this build chain — regenerate them
+  by re-running the chain rather than sharing them.
+</footer>
+
+</div>
+
+<script>
+const LANES = {
+  coord:   {cls:'l-coord',   label:'Senior Partner'},
+  pricing: {cls:'l-pricing', label:'Pricing'},
+  legal:   {cls:'l-legal',   label:'Legal'},
+  tech:    {cls:'l-tech',    label:'Technical Fit'},
+  comp:    {cls:'l-comp',    label:'Competitive'},
+  critic:  {cls:'l-critic',  label:'Critic'}
+};
+
+/* Every t is seconds from the first session event, taken from the
+   processed_at on sessions.events.list(). Playback delays are derived
+   from the real gaps, compressed 16x and capped so a 13-minute run
+   replays in about ten seconds. */
+const TAPE = [
+  {t:0.1,   lane:'coord',   kind:'say',      text:'An RFP has just landed. Please run the standard Deal Desk process: read it yourself, delegate to all four specialists in one message, synthesise their replies, and produce the final proposal response as a Word document.'},
+  {t:56.9,  lane:'coord',   kind:'say',      text:'I’ve read the RFP. Acme Corp — $1.4B industrial IoT manufacturer, Azure/Microsoft shop, 280TB growing 12TB/month, 80k events/sec peak, 600 Power BI users. Curveballs are stacked in sections 3 and 4.'},
+  {t:57.1,  lane:'pricing', kind:'spawn',    text:'thread created — Pricing Specialist'},
+  {t:57.1,  lane:'pricing', kind:'delegate', text:'delegate → discount band, term and payment structure, red-lines, margin risks'},
+  {t:57.5,  lane:'legal',   kind:'spawn',    text:'thread created — Legal Reviewer'},
+  {t:57.5,  lane:'legal',   kind:'delegate', text:'delegate → every clause conflicting with standard positions, each with a counter and a severity'},
+  {t:57.8,  lane:'tech',    kind:'spawn',    text:'thread created — Technical Fit Specialist'},
+  {t:57.8,  lane:'tech',    kind:'delegate', text:'delegate → fully / partially / not at all per requirement, plus the single biggest risk'},
+  {t:58.0,  lane:'comp',    kind:'spawn',    text:'thread created — Competitive Intel Analyst'},
+  {t:58.0,  lane:'comp',    kind:'delegate', text:'delegate → likely competitors, the real threat, positioning angles, one trap to avoid'},
+  {t:59.7,  lane:'coord',   kind:'say',      text:'All four specialists are running in parallel. Standing by for their reports.'},
+  {t:76.1,  lane:'legal',   kind:'reply',    text:'reply ← Legal Reviewer — five blockers, all with counters'},
+  {t:78.0,  lane:'legal',   kind:'idle',     text:'thread idle — 20.5 s of work'},
+  {t:78.2,  lane:'coord',   kind:'say',      text:'Legal in — five blockers, all with counters. Waiting on Pricing, Technical Fit, and Competitive Intel.'},
+  {t:78.3,  lane:'comp',    kind:'reply',    text:'reply ← Competitive Intel Analyst — Databricks is the primary threat'},
+  {t:78.8,  lane:'comp',    kind:'idle',     text:'thread idle — 20.8 s of work'},
+  {t:81.8,  lane:'coord',   kind:'say',      text:'Comp intel in — Databricks is the real threat, TCO is the battleground. Its claim we deliver 99.99% conflicts with Legal’s 99.95% standard; I’ll take Legal and Technical Fit over the battlecard on that point.'},
+  {t:97.9,  lane:'pricing', kind:'reply',    text:'reply ← Pricing Specialist — 25% standard band, 28% strategic ceiling'},
+  {t:99.8,  lane:'coord',   kind:'say',      text:'Pricing in — 28% strategic ceiling, refuse 35% and MFN, Net 60. One left: Technical Fit.'},
+  {t:100.1, lane:'pricing', kind:'idle',     text:'thread idle — 43.0 s of work'},
+  {t:100.4, lane:'tech',    kind:'reply',    text:'reply ← Technical Fit Specialist — 3× headroom on ingest, gaps named honestly'},
+  {t:103.1, lane:'coord',   kind:'say',      text:'All four in. Reading the house style skill before drafting.'},
+  {t:103.1, lane:'coord',   kind:'tool',     text:'read × 2 — firm-voice'},
+  {t:103.2, lane:'tech',    kind:'idle',     text:'thread idle — 45.4 s of work · the slowest specialist, and so the one that sets the window'},
+  {t:190.3, lane:'coord',   kind:'say',      text:'Synthesis is clear. Drafting to house style, then straight to the Critic.'},
+  {t:190.3, lane:'coord',   kind:'tool',     text:'write — draft v1'},
+  {t:256.6, lane:'critic',  kind:'spawn',    text:'thread created — Deal Desk Critic'},
+  {t:256.6, lane:'critic',  kind:'delegate', text:'delegate → v1 · verdict of SHIP IT, REVISE with up to five fixes, or STOP'},
+  {t:258.0, lane:'coord',   kind:'say',      text:'Draft is with the Critic.'},
+  {t:357.5, lane:'critic',  kind:'idle',     text:'thread idle — round 1 took 100.9 s'},
+  {t:357.8, lane:'critic',  kind:'reply',    text:'reply ← Deal Desk Critic — VERDICT: REVISE, five fixes in priority order'},
+  {t:453.4, lane:'coord',   kind:'say',      text:'Critic caught a real arithmetic error and a contradiction worth fixing. Revising: Year 5 is 3.5× not 2.6×, unit-rate language reconciled with the true-up, the false “ceiling” claim removed.'},
+  {t:453.4, lane:'coord',   kind:'tool',     text:'write — draft v2'},
+  {t:529.4, lane:'critic',  kind:'delegate', text:'delegate → v2 · all five fixes addressed, answered against the Critic’s own numbering'},
+  {t:530.8, lane:'coord',   kind:'say',      text:'V2 is with the Critic.'},
+  {t:600.1, lane:'critic',  kind:'idle',     text:'thread idle — round 2 took 70.7 s'},
+  {t:600.4, lane:'critic',  kind:'reply',    text:'reply ← Deal Desk Critic — VERDICT: SHIP IT · “I re-ran the arithmetic independently rather than taking the summary on trust”'},
+  {t:607.1, lane:'coord',   kind:'say',      text:'SHIP IT. Applying the three copy edits, then building the document.'},
+  {t:607.1, lane:'coord',   kind:'tool',     text:'bash'},
+  {t:619.6, lane:'coord',   kind:'tool',     text:'edit × 3 — the three copy edits'},
+  {t:624.6, lane:'coord',   kind:'tool',     text:'edit'},
+  {t:633.2, lane:'coord',   kind:'tool',     text:'bash — build the .docx'},
+  {t:728.1, lane:'coord',   kind:'tool',     text:'write'},
+  {t:730.2, lane:'coord',   kind:'tool',     text:'bash'},
+  {t:733.9, lane:'coord',   kind:'say',      text:'Now rendering it to check the output visually.'},
+  {t:733.9, lane:'coord',   kind:'tool',     text:'bash — render the pages to images'},
+  {t:750.2, lane:'coord',   kind:'tool',     text:'bash'},
+  {t:753.0, lane:'coord',   kind:'tool',     text:'read × 2 — page images'},
+  {t:756.6, lane:'coord',   kind:'tool',     text:'read × 2'},
+  {t:759.7, lane:'coord',   kind:'tool',     text:'read × 2'},
+  {t:778.9, lane:'coord',   kind:'done',     text:'Document delivered and verified — /mnt/session/outputs/proposal-response.docx, six pages, rendered and inspected.'},
+  {t:779.0, lane:'coord',   kind:'end',      text:'session.status_idle · stop_reason end_turn · $3.04 of the $10.00 cap'}
+];
+
+const RUN_END = 779.0;
+/* e.d is the pause AFTER this row, so it must be the gap to the NEXT event —
+   step() reveals rows[i] and then waits e.d before revealing rows[i+1]. The
+   last row has nothing following it, so it waits 0. */
+TAPE.forEach((e, i) => {
+  const next = TAPE[i + 1];
+  e.d = next ? Math.min(700, Math.max(60, (next.t - e.t) * 16)) : 0;
+});
+
+/* ── lane lifespans, measured. The critic ran twice, so it gets two
+      segments rather than one bar papering over 172s of not running. ── */
+const SPANS = {
+  coord:   {segs:[[0.0, 779.0]],                busy:'779.0s'},
+  pricing: {segs:[[57.1, 100.1]],               busy:'43.0s'},
+  legal:   {segs:[[57.5, 78.0]],                busy:'20.5s'},
+  tech:    {segs:[[57.8, 103.2]],               busy:'45.4s'},
+  comp:    {segs:[[58.0, 78.8]],                busy:'20.8s'},
+  critic:  {segs:[[256.6, 357.5],[529.4, 600.1]], busy:'171.6s'}
+};
+
+(function buildLanes(){
+  const host = document.getElementById('lanes');
+  Object.keys(LANES).forEach(key => {
+    const s = SPANS[key];
+    if (!s) return;
+    const row = document.createElement('div');
+    row.className = 'lane-row ' + LANES[key].cls;
+    const bars = s.segs.map(seg => {
+      const left = (seg[0] / RUN_END) * 100;
+      const width = Math.max(((seg[1] - seg[0]) / RUN_END) * 100, 0.4);
+      return '<span class="lane-bar" style="left:' + left.toFixed(2) +
+             '%;width:' + width.toFixed(2) + '%"></span>';
+    }).join('');
+    row.innerHTML =
+      '<span class="lane-name">' + LANES[key].label + '</span>' +
+      '<span class="lane-track">' + bars + '</span>' +
+      '<span class="lane-span">' + s.busy + '</span>';
+    host.appendChild(row);
+  });
+  const axis = document.createElement('div');
+  axis.className = 'lane-row lane-axis';
+  axis.innerHTML =
+    '<span></span><span class="lane-track lane-ticks">' +
+    [0, 200, 400, 600].map(v =>
+      '<i style="left:' + ((v / RUN_END) * 100).toFixed(2) + '%">' + v + '</i>').join('') +
+    '<i style="left:100%;transform:translateX(-100%)">779s</i></span><span></span>';
+  host.appendChild(axis);
+})();
+
+/* ── the tape ─────────────────────────────────────────────── */
+const tapeEl = document.getElementById('tape');
+const rows = TAPE.map((e, i) => {
+  const div = document.createElement('div');
+  div.className = 'ev ' + LANES[e.lane].cls + ' ev-k-' + e.kind;
+  div.innerHTML =
+    '<span class="ev-n">' + e.t.toFixed(1) + '</span>' +
+    '<span class="ev-lane">' + LANES[e.lane].label + '</span>' +
+    '<p class="ev-t"></p>';
+  div.querySelector('.ev-t').textContent = e.text;
+  tapeEl.appendChild(div);
+  return div;
+});
+
+const btn = document.getElementById('replay');
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let timer = null;
+
+function stop(){
+  if (timer) { clearTimeout(timer); timer = null; }
+}
+function showAll(){
+  rows.forEach(r => { r.classList.remove('hidden','flash'); });
+  btn.textContent = '▶ Replay the fan-out';
+  btn.disabled = false;
+}
+function play(){
+  stop();
+  rows.forEach(r => { r.classList.add('hidden'); r.classList.remove('flash'); });
+  tapeEl.scrollTop = 0;
+  btn.textContent = 'Replaying…';
+  btn.disabled = true;
+  let i = 0;
+  (function step(){
+    if (i >= rows.length) { showAll(); return; }
+    const row = rows[i];
+    row.classList.remove('hidden');
+    if (!reduced) row.classList.add('flash');
+    const overshoot = row.offsetTop + row.offsetHeight - tapeEl.clientHeight;
+    if (overshoot > tapeEl.scrollTop) tapeEl.scrollTop = overshoot + 24;
+    const delay = reduced ? Math.min(TAPE[i].d, 120) : TAPE[i].d;
+    i++;
+    timer = setTimeout(step, delay);
+  })();
+}
+btn.addEventListener('click', play);
+
+/* ── PR ledger ────────────────────────────────────────────── */
+const PRS = [
+  {n:1,  branch:'docs/scenario-a-plan',            what:'The build-out plan itself, landed before any code so teammates could pick workstreams.',                        f:1,  a:196, d:0},
+  {n:2,  branch:'ws2/docx-deliverable',            what:'The punchline: docx skill on the coordinator, /mnt/session/outputs/ as an explicit contract, hedges removed, download retry.', f:7,  a:287, d:50},
+  {n:3,  branch:'ws1/api-correctness',             what:'A description on every agent, model policy centralised in config.py, SDK floor raised, Console URL fixed.',      f:10, a:189, d:39},
+  {n:4,  branch:'ws3/specialist-skills',           what:'technical-fit and firm-voice authored; skill identity moved from display_name to skill_id.',                     f:7,  a:431, d:76},
+  {n:5,  branch:'ws4/repo-hygiene',                what:'.gitignore for the state dot-files, one true run order, re-run guards on both create scripts.',                  f:10, a:263, d:65},
+  {n:6,  branch:'ws5/critic-subagent',             what:'Critic brought in line and wired into the roster — one level of delegation, 1–20 entries.',                      f:3,  a:116, d:35},
+  {n:7,  branch:'ws6/visible-parallelism',         what:'Explicit single-message fan-out; stop_reason inspected so a pause stops reporting as success.',                   f:3,  a:35,  d:3},
+  {n:8,  branch:'ws7/budget-and-smoke-test',       what:'Session spend cap in minor units, plus the preflight that is this repo’s only regression suite.',            f:5,  a:300, d:3},
+  {n:9,  branch:'ws5-followup/critic-rewiring',    what:'Let the critic script re-wire a rebuilt coordinator instead of refusing.',                                       f:3,  a:53,  d:31},
+  {n:10, branch:'fixups/prompt-and-key-drift',     what:'Drift found while re-reading the whole stack end to end.',                                                       f:5,  a:11,  d:8},
+  {n:11, branch:'docs/execution-notes',            what:'What the build actually produced, measured against the checks written in advance.',                              f:1,  a:95,  d:9}
+];
+const maxTouched = Math.max.apply(null, PRS.map(p => p.a + p.d));
+document.getElementById('prs').innerHTML = PRS.map(p => {
+  const scale = ((p.a + p.d) / maxTouched) * 100;
+  const addPct = (p.a / (p.a + p.d)) * 100;
+  return '<tr>' +
+    '<td class="num">#' + p.n + '</td>' +
+    '<td class="num" style="color:var(--ink)">' + p.branch + '</td>' +
+    '<td>' + p.what + '</td>' +
+    '<td class="num">' + p.f + '</td>' +
+    '<td>' +
+      '<span class="bar" style="width:' + Math.max(scale, 8).toFixed(1) + '%">' +
+        '<span class="bar-add" style="width:' + addPct.toFixed(1) + '%"></span>' +
+        '<span class="bar-del" style="flex:1"></span>' +
+      '</span>' +
+      '<span class="num" style="display:block;font-size:11px;margin-top:4px">+' + p.a + ' / −' + p.d + '</span>' +
+    '</td>' +
+  '</tr>';
+}).join('');
+</script>
+</body>
+</html>

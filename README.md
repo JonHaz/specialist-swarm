@@ -149,6 +149,11 @@ Two-monitor setup:
 
 Narrate the events stream while it runs. The room will get it.
 
+Afterwards, [`docs/deal-desk-console.html`](./docs/deal-desk-console.html) is a single-file
+read-out of the build and one recorded run: the measured 13-minute timeline, the parallel
+fan-out, the evals, what it cost, and where every number came from. Open it in a browser —
+no server, no build step.
+
 ## What's in this folder
 
 ```
@@ -169,7 +174,8 @@ specialist-swarm/
 ├── download_deliverable.py        (re-pulls files from a past session)
 ├── stretch_critic_subagent.py     (stretch: critic agent)
 ├── docs/
-│   └── scenario-a-build-out.md    (the build-out plan this repo follows)
+│   ├── scenario-a-build-out.md    (the build-out plan this repo follows)
+│   └── deal-desk-console.html     (read-out of the build and one recorded run)
 ├── skills/
 │   ├── pricing-playbook/SKILL.md  -> Pricing Specialist
 │   ├── legal-checklist/SKILL.md   -> Legal Reviewer

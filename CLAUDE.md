@@ -179,6 +179,32 @@ download deliverables the agents produced in the session container.
 Diligence) and C (Hire-to-Onboard) require writing new `synthetic-data/` fixtures and rewriting the
 `SPECIALISTS` roster and coordinator prompt from scratch.
 
+## `docs/deal-desk-console.html`
+
+A single static page summarising the build and the one recorded run
+(`sesn_019NyLvVjpWboXwsWN8FVNvj`). It is documentation, not part of the pipeline: no script
+reads it, nothing imports it, and it deliberately has **no build step** — one file, opened
+directly in a browser, with Google Fonts as its only external request.
+
+Two things to know before editing it:
+
+- **Every number on it is measured, not estimated.** Timings are differences between the
+  `processed_at` fields on `client.beta.sessions.events.list(session_id)`; spend is
+  `usage.list_cost` from `sessions.retrieve`. The printed run log has no timestamps — the
+  timings only exist because the events API carries them. Where no denominator exists (the
+  critic's defect coverage, and the run's n=1 sample), the page says so rather than quoting a
+  rate. Keep that discipline: no number ships without its provenance next to it.
+- **It is also published as a Claude artifact**, whose host supplies its own
+  `<!doctype>`/`<head>`/`<body>`. Republishing means sending everything from the `<title>` to
+  the end of the file without this copy's wrapper. The comment inside the file's `<head>` says
+  the same thing, so it survives being read out of context.
+- **The provenance comment sits *below* `<meta charset="utf-8">`, not above `<html>`.** HTML5
+  only scans the first 1024 bytes for the encoding declaration, and that comment is longer than
+  that; with the comment on top, the charset landed at byte 1044, outside the window, and the
+  page fell back to a locale guess wherever the server sent no charset header — which is every
+  `file://` open and this repo's whole point. Anything added to that comment stays below the
+  meta.
+
 ## Repo hygiene note
 
 `.gitignore` covers `.env`, all five state dot-files, and `outputs/`. Those state files hold
